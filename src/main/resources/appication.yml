@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/sportsapp
     username: postgres
-    password: MunMun%1974
+    password: ${db.password}
 
   jpa:
     hibernate:
