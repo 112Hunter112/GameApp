@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: sports-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sportsapp
+    username: postgres
+    password: password
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+server:
+  port: 8080
+
+---
+
+## **What was wrong:**
+
+1. **`...`** (three dots) is not valid YAML syntax - remove them
+2. **Weird characters** like `***` in your comments - remove those
+3. **Comments should use `#`** not `**`
+
+---
+
+## **How to fix:**
+
+1. **Select ALL text** in `application.yml` (Ctrl+A)
+2. **Delete it**
+3. **Copy and paste** the corrected version above
+4. **Save** (Ctrl+S)
+
+---
+
+After fixing, the errors at the bottom should disappear. Then try running `SportsBackendApplication` again - you should see:
+  ```
+Tomcat started on port(s): 8080
