@@ -21,10 +21,10 @@ public class JwtUtil {
 
 
   @Value("${jwt.secret}")
-  public  final String SECRET_KEY = "gu038MaKULlsx9zRnsZCQVVuVxWSkzNFJgpqC8N84v4=";
+  private String SECRET_KEY;
 
   @Value("${jwt.secret}")
-  private  final long EXPIRATION_TIME = 1000 * 60 * 60 * 24;
+  private long EXPIRATION_TIME;
 
   public String generateToken(String email) {
     Map<String, Object> claims = new HashMap<String, Object>(); // this is to store extra info,
