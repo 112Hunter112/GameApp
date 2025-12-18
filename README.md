@@ -81,7 +81,7 @@ Use axios or fetch to call your APIs
 Display the data
 
 
-/*
+
 USer enters data on frontend and we recieve on backend,
 1. check if email already exits in DB
    1.1 If user already taken return, email in use
@@ -91,4 +91,5 @@ USer enters data on frontend and we recieve on backend,
 4. save info in DB if info correct
 5. create a JWT token
 6. Return JWT token to user and user profile
-   */
+   
+17/12/25 set up JWT and DTO files nest need to set up controls 
