@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.constraints.Pattern;
 
 public class RegisterRequest {
 
@@ -14,7 +15,8 @@ public class RegisterRequest {
   private String email;
 
   @NotBlank(message = "Password is required")
-  @Size(min = 8, message = "Password must be at least 8 characters")
+  @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$",
+      message = "Password must check: 8+ chars, 1 number, 1 upper, 1 lower, 1 special char")
   private String password;
 
   @NotBlank(message = "Password confirmation is required")

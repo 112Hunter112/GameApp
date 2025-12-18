@@ -93,3 +93,13 @@ USer enters data on frontend and we recieve on backend,
 6. Return JWT token to user and user profile
    
 17/12/25 set up JWT and DTO files nest need to set up controls 
+
+
+
+**It's the BRAIN of authentication** - orchestrates everything:
+```
+AuthService coordinates:
+├── UserRepository (database queries)
+├── JwtUtil (token generation)
+├── BCryptPasswordEncoder (password hashing)
+└── DTOs (data transformation)

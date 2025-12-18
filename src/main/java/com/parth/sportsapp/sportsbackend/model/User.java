@@ -55,6 +55,8 @@ public class User {
    * @return the value they are assigned or set those values in db.
    */
 
+
+
   public String getFirstName() {return firstName;}
   public void setFirstName(String firstName) {this.firstName = firstName;}
 
@@ -76,11 +78,15 @@ public class User {
   public UUID getId() {return id;}
   public void setId(UUID id) {this.id = id;}
 
-// check if all values are entered
-
-  public boolean checkEmail() {
-    return this.email != null;
+  public UserRole getRole() {
+    return role;
   }
+
+  public void setRole(UserRole role) {
+    this.role = role;
+  }
+
+
 
 
 //  default constructor
