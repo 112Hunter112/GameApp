@@ -1,11 +1,13 @@
 spring:
+  config:
+    import: "classpath:application-secrets.properties"
   application:
     name: sports-backend
 
   datasource:
     url: jdbc:postgresql://localhost:5432/sportsapp
     username: postgres
-    password: ${db.password}
+    password: ${db.PASSWORD}
 
   jpa:
     hibernate:
@@ -19,6 +21,9 @@ spring:
 server:
   port: 8080
 
+jwt:
+  secret: ${jwt.SECRET}
+  expiration: ${jwt.EXPIRATION}
 ---
 
 ## **What was wrong:**
@@ -41,3 +46,29 @@ server:
 After fixing, the errors at the bottom should disappear. Then try running `SportsBackendApplication` again - you should see:
   ```
 Tomcat started on port(s): 8080
+  
+  
+  | Method | Purpose | When Used |
+  |--------|---------|-----------|
+  | `generateToken(email)` | Create new JWT | After successful login/register |
+  | `createToken(claims, subject)` | Build JWT with signature | Called by generateToken |
+  | `getSigningKey()` | Convert secret to Key object | Internal helper |
+  | `extractEmail(token)` | Get email from token | When validating requests |
+  | `extractExpiration(token)` | Get expiration date | Check if expired |
+  | `extractClaim(token, resolver)` | Get any claim | Generic extraction |
+  | `extractAllClaims(token)` | Decode entire token | Internal helper |
+  | `isTokenExpired(token)` | Check if expired | Validation |
+  | `validateToken(token, email)` | Full validation | Every authenticated request |
+
+
+## **✅ Progress Update:**
+  ```
+Layer 1: Entity          [████████████████████] 100% ✅ User.java
+Layer 2: Repository      [████████████████████] 100% ✅ UserRepository.java
+Layer 3: DTOs            [████████████████████] 100% ✅ RegisterRequest, LoginRequest, AuthResponse
+Layer 4: Security/JWT    [████████████████████] 100% ✅ JwtUtil.java
+Layer 5: Service         [░░░░░░░░░░░░░░░░░░░░]   0%
+Layer 6: Controller      [░░░░░░░░░░░░░░░░░░░░]   0%
+Layer 7: Security Config [░░░░░░░░░░░░░░░░░░░░]   0%
+
+Overall: 57% Complete

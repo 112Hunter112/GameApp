@@ -8,5 +8,5 @@ public enum UserRole {
 
   ADMIN,
   USER,
-  VENue_OWNER
+  VENUE_OWNER
 }
