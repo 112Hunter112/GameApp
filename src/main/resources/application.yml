@@ -1,0 +1,24 @@
+spring:
+  config:
+    import: "classpath:application-secrets.properties"
+  application:
+    name: sports-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sportsapp
+    username: postgres
+    password: ${db.password}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+server:
+  port: 8080
+
+jwt:
+  secret: ${jwt.secret}
+  expiration: 86400000
