@@ -23,7 +23,7 @@ public class JwtUtil {
   @Value("${jwt.secret}")
   private String SECRET_KEY;
 
-  @Value("${jwt.secret}")
+  @Value("${jwt.expiration}")
   private long EXPIRATION_TIME;
 
   public String generateToken(String email) {

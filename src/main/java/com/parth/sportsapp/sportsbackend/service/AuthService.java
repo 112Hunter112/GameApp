@@ -6,9 +6,13 @@ import com.parth.sportsapp.sportsbackend.dto.RegisterRequest;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.model.UserRole;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -22,7 +26,20 @@ public class AuthService {
   @Autowired
   private PasswordEncoder passwordEncoder;
 
-  public AuthResponse register(RegisterRequest registerRequest) {
+  @Autowired
+  private EmailService emailService;
+
+  /**
+   * This method outputs the AuthResponse if all test cases pass and also adds the data to the
+   * DB by making it an object.
+   *
+   *
+   * todo : must change method type to String
+   * @param registerRequest
+   * @return
+   */
+  @Transactional
+  public String register(RegisterRequest registerRequest) {
     // user RegisterRequest DTO to take info from frontend, use RegisterRequest as param to take
 
 
@@ -36,12 +53,14 @@ public class AuthService {
    if(userRepository.existsByPhoneNumber(registerRequest.getPhoneNumber())) {
      throw new RuntimeException("Phone number already in use");
    }
-    // if email/number does not exist in DB, then pass through password encoder
+
+
+    // if email and number do not exist in DB, then pass through password encoder
    if(!registerRequest.getPassword().equals(registerRequest.getConfirmPassword())) {
      // if the password is wrong, return null
      throw new RuntimeException("Password does not match");
    }
-    // todo : then push the info into db
+
     User newUser = new User();
     newUser.setEmail(registerRequest.getEmail());
     newUser.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
@@ -50,21 +69,27 @@ public class AuthService {
     newUser.setPhoneNumber(registerRequest.getPhoneNumber());
     newUser.setRole(UserRole.USER); // Set the default role
 
+
+    // verify email
+
+    newUser.setVerified(false); // set initial verified as false so that user gets veified via email
+
+    String vToken = UUID.randomUUID().toString();
+
+    newUser.setVerificationToken(vToken);
+    newUser.setVerificationTokenExpiry(LocalDateTime.now().plusMinutes(30));
+
+
     User savedUser = userRepository.save(newUser);
 
-    String token = jwtUtil.generateToken(savedUser.getEmail());
+
+    String link = "http://localhost:8080/api/auth/verify?token=" + vToken;
+
+    emailService.sendMailWithAttachment(registerRequest.getEmail(),
+        "verification mail for DuoSprt", link);
 
 
-    //todo : then we generate jwt token with jwtUtil and send to AuthResponce to frontend
-
-
-    return new AuthResponse(
-        token,
-        savedUser.getEmail(),
-        savedUser.getFirstName(),
-        savedUser.getRole().name() // .name() converts the Enum to a String
-    );
-
+    return "Verification email sent";
   }
 
   public AuthResponse login(LoginRequest request) {
@@ -82,6 +107,10 @@ public class AuthService {
       throw new RuntimeException("Invalid credentials");
     }
 
+    if (!Boolean.TRUE.equals(user.getVerified())) {
+      throw new RuntimeException("Account not verified. Please check your email.");
+    }
+
     // Step 3: Generate the Token
     String token = jwtUtil.generateToken(user.getEmail());
 
@@ -92,6 +121,38 @@ public class AuthService {
         user.getFirstName(),
         user.getRole().name() // Converts Enum (USER) to String ("USER")
     );
+  }
+
+
+  public String verifyAccount(String token) {
+
+    // Find the user by the token
+    User user = userRepository.findByVerificationToken(token)
+        .orElseThrow(() -> new RuntimeException("Invalid verification token"));
+
+
+    // We compare "Now" against the "Expiry Time" saved in the DB.
+    if (user.getVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
+      throw new RuntimeException("Token has expired. Please register again.");
+    }
+
+    // Check if already verified to save DB calls
+    if (Boolean.TRUE.equals(user.getVerified())) {
+      return "Account is already verified.";
+    }
+
+    // 4. Activate the user
+    user.setVerified(true);
+
+
+    // Remove the token so it can't be used again
+    user.setVerificationToken(null);
+    user.setVerificationTokenExpiry(null);
+
+    // 6. Save changes
+    userRepository.save(user);
+
+    return "Account verified successfully!";
   }
 
 

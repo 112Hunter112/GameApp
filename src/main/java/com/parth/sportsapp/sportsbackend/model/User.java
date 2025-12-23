@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name="DB_ACTUAL_NAME", schema = "schema name")
+@Table(name="users")
 public class User {
 
   @Id
@@ -50,6 +50,15 @@ public class User {
   @Column(nullable = false)
   private LocalDateTime updatedAt; // to check if they updated any info for troubleshooting
 
+
+  @Column(nullable = false)
+  private Boolean isVerified = false;  // ← NEW: Email verified?
+
+  private String verificationToken;  // ← NEW: Random token for verification
+
+  private LocalDateTime verificationTokenExpiry;  // ← NEW: Token expires after 24 hours
+
+
   /**
    * These are all the getters and setters
    * @return the value they are assigned or set those values in db.
@@ -86,10 +95,39 @@ public class User {
     this.role = role;
   }
 
+  public Boolean getVerified() {
+    return isVerified;
+  }
 
+  public void setVerified(Boolean verified) {
+    isVerified = verified;
+  }
 
+  public String getVerificationToken() {
+    return verificationToken;
+  }
 
-//  default constructor
+  public void setVerificationToken(String verificationToken) {
+    this.verificationToken = verificationToken;
+  }
+
+  public LocalDateTime getVerificationTokenExpiry() {
+    return verificationTokenExpiry;
+  }
+
+  public void setVerificationTokenExpiry(LocalDateTime verificationTokenExpiry) {
+    this.verificationTokenExpiry = verificationTokenExpiry;
+  }
+
+  public LocalDateTime getUpdatedAt() {
+    return updatedAt;
+  }
+
+  public void setUpdatedAt(LocalDateTime updatedAt) {
+    this.updatedAt = updatedAt;
+  }
+
+  //  default constructor
   public User() {
 
   }

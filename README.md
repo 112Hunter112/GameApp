@@ -1,105 +1,137 @@
-# GameApp
+```markdown
+# 🏟️ SportsApp Backend
 
-How to Run Both Together:
-Step 1: Run Backend (Terminal 1)
-bash# In your SportsBackend folder
-cd C:\Users\Parth Aditya\projects\SportsBackend
-# Run in IntelliJ or:
+A robust backend service for a sports venue booking application. Built with **Spring Boot** and **PostgreSQL**, designed to serve a React Native mobile frontend.
+
+> **Created by:** Parth Aditya
+
+---
+
+## 🛠️ Tech Stack
+
+* **Language:** Java 17+
+* **Framework:** Spring Boot 3.x
+* **Database:** PostgreSQL
+* **Security:** Spring Security & JWT (JSON Web Tokens)
+* **Build Tool:** Maven
+* **Tools:** Docker, Postman, IntelliJ IDEA
+
+---
+
+## 📐 Architecture & Flow
+
+The application follows a standard **Controller-Service-Repository** architecture.
+
+```mermaid
+graph LR
+    A[Mobile App\nReact Native] -->|HTTP Request| B[Spring Boot API]
+    B -->|JSON Response| A
+    B -->|Query/Save| C[PostgreSQL\nDatabase]
+
+```
+
+### Authentication Logic (The "Brain")
+
+The `AuthService` orchestrates the security flow:
+
+1. **Validate:** Checks if Email/Phone already exists in DB.
+2. **Secure:** Hashes passwords using `BCryptPasswordEncoder`.
+3. **Store:** Saves the `User` entity to PostgreSQL.
+4. **Tokenize:** Generates a **JWT** via `JwtUtil`.
+5. **Response:** Returns the Token + User Profile to the frontend.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+* Java 17 or higher
+* PostgreSQL installed and running
+* Maven
+
+### 1. Database Setup
+
+Ensure your `application.properties` matches your local PostgreSQL credentials:
+
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/sports_db
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+
+```
+
+### 2. Run the Backend
+
+Open your terminal in the project root:
+
+```bash
+# Using Maven Wrapper (Windows)
+.\mvnw spring-boot:run
+
+# Using Maven Wrapper (Mac/Linux)
 ./mvnw spring-boot:run
-Backend now runs on: http://localhost:8080
-Step 2: Run Frontend (Terminal 2)
-bash# In your GameApp-Mobile folder (when you create it)
-cd C:\Users\Parth Aditya\projects\GameApp-Mobile
-npm start
-Mobile app runs on your phone/emulator
-Step 3: Configure API Base URL in Frontend
-typescript// src/services/api.ts
-import axios from 'axios';
 
-const API_BASE_URL = __DEV__
-? 'http://10.0.2.2:8080/api'  // Android emulator
-: 'https://your-production-api.com/api';
-
-const api = axios.create({
-baseURL: API_BASE_URL,
-});
-
-export default api;
 ```
+
+* **Server runs on:** `http://localhost:8080`
+* **Swagger UI:** `http://localhost:8080/swagger-ui/index.html` (Once dependency is added)
+
+### 3. Run the Frontend (Planned)
+
+* *Note: Frontend is currently in development.*
+* **Standard Command:** `npm start` inside the mobile app folder.
+* **Emulator Config:** Android Emulator uses `10.0.2.2` to access localhost.
 
 ---
 
-## **Real-World Flow:**
+## 🔌 API Endpoints
 
-1. User opens app → Sees "Find Venues" button
-2. User taps button → Frontend calls `GET http://localhost:8080/api/venues`
-3. Backend receives request → Queries PostgreSQL database
-4. Backend returns JSON: `[{id: 1, name: "Soccer Field A"}, ...]`
-5. Frontend receives data → Displays venues on screen
+### Authentication (`/auth`)
 
----
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/auth/register` | Register a new user (Player). |
+| `POST` | `/auth/login` | Login and receive JWT. |
+| `POST` | `/auth/register/vendor` | (Future) Register a venue owner. |
 
-## **Important Notes:**
+### Venues (`/api/venues`) - *Coming Soon*
 
-### **For Development (Local Testing):**
-- Backend: `http://localhost:8080`
-- Frontend connects to `localhost` (or `10.0.2.2` for Android emulator)
-
-### **For Production (Real App):**
-- Backend: Deploy to cloud (e.g., `https://api.yourgame.com`)
-- Frontend: Update API URL to production URL
-- Both run on different servers, communicate via HTTPS
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/venues` | List all available sports venues. |
+| `POST` | `/venues` | Add a new venue (Vendor only). |
 
 ---
 
-## **Visual Diagram:**
+## 📅 Development Roadmap & Status
+
+### Phase 1: Backend Core (In Progress) 🚧
+
+* [x] Set up Spring Boot & PostgreSQL connection
+* [x] Create User Entity & Repository
+* [x] Implement JWT Utility & Security Config
+* [x] Build Auth Service (Register/Login logic)
+* [ ] Build Authentication Controller
+* [ ] Test with Postman
+
+### Phase 2: Venue Management (Next)
+
+* [ ] Create Venue Entity
+* [ ] Build Venue CRUD APIs
+
+### Phase 3: Frontend (Future)
+
+* [ ] Initialize React Native project
+* [ ] Connect Axios to Backend APIs
+
+---
+
+### 📝 Developer Log
+
+* **17/12/25:** Set up JWT, DTOs, and Service layer. Validated password hashing flow.
+* **Next:** Setting up Controllers to expose the API.
+
 ```
-┌─────────────────┐         HTTP Request          ┌──────────────────┐
-│  React Native   │ ──────────────────────────> │  Spring Boot API │
-│   (Frontend)    │    GET /api/venues           │    (Backend)     │
-│   Port: 8081    │ <────────────────────────── │   Port: 8080     │
-└─────────────────┘    JSON Response             └──────────────────┘
-│
-↓
-┌──────────────┐
-│  PostgreSQL  │
-│   Database   │
-└──────────────┘
 
-Next Steps for You:
-Phase 1: Build Backend APIs (What we're doing now)
-
-Create /api/auth/login
-Create /api/venues
-Create /api/bookings
-Test with Postman (you don't need frontend yet!)
-
-Phase 2: Build Frontend (Later)
-
-Create React Native app
-Use axios or fetch to call your APIs
-Display the data
-
-
-
-USer enters data on frontend and we recieve on backend,
-1. check if email already exits in DB
-   1.1 If user already taken return, email in use
-
-2. Hash passowrd to store in DB
-3. create User object and the user will checkif all info valid and returns that info
-4. save info in DB if info correct
-5. create a JWT token
-6. Return JWT token to user and user profile
-   
-17/12/25 set up JWT and DTO files nest need to set up controls 
-
-
-
-**It's the BRAIN of authentication** - orchestrates everything:
 ```
-AuthService coordinates:
-├── UserRepository (database queries)
-├── JwtUtil (token generation)
-├── BCryptPasswordEncoder (password hashing)
-└── DTOs (data transformation)

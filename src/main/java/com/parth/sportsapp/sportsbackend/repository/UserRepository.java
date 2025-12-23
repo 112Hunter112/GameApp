@@ -20,5 +20,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   boolean existsByPhoneNumber(String phoneNumber); // sees if phone number exists
 
-  //User save(User user); this is an inbuilt function of JpaRepository
+  // In UserRepository.java
+  Optional<User> findByVerificationToken(String token);
+
 }
