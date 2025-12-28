@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.net.ssl.HttpsURLConnection;
 
 @RestController
-@RequestMapping("api/auth")
+@RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")  // Explicit, but still allows all // this allows requesats from
 // react native app
 

@@ -4,7 +4,8 @@ spring:
   application:
     name: sports-backend
   datasource:
-    url: jdbc:postgresql://localhost:5432/sportsapp
+    # Change from: url: jdbc:postgresql://localhost:5432/sportsapp
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/sportsapp
     username: postgres
     password: password
   jpa:
