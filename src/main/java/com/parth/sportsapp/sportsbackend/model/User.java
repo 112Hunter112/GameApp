@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -58,13 +59,26 @@ public class User {
 
   private LocalDateTime verificationTokenExpiry;  // ← NEW: Token expires after 24 hours
 
+  @OneToMany(mappedBy = "user")
+  private List<UserPreference> preferences;
+
+
+  @OneToMany(mappedBy = "user")
+  private List<Booking> bookings;
+
+  @OneToMany(mappedBy = "createdByUser")
+  private List<Match> matches;
+
+  @OneToMany(mappedBy = "owner")
+  private List<Venue> ownedVenues;
+
+  @OneToMany(mappedBy = "user")
+  private List<Participants> participationHistory;
 
   /**
    * These are all the getters and setters
    * @return the value they are assigned or set those values in db.
    */
-
-
 
   public String getFirstName() {return firstName;}
   public void setFirstName(String firstName) {this.firstName = firstName;}
@@ -125,6 +139,46 @@ public class User {
 
   public void setUpdatedAt(LocalDateTime updatedAt) {
     this.updatedAt = updatedAt;
+  }
+
+  public List<UserPreference> getPreferences() {
+    return preferences;
+  }
+
+  public void setPreferences(List<UserPreference> preferences) {
+    this.preferences = preferences;
+  }
+
+  public List<Booking> getBookings() {
+    return bookings;
+  }
+
+  public void setBookings(List<Booking> bookings) {
+    this.bookings = bookings;
+  }
+
+  public List<Match> getMatches() {
+    return matches;
+  }
+
+  public void setMatches(List<Match> matches) {
+    this.matches = matches;
+  }
+
+  public List<Venue> getOwnedVenues() {
+    return ownedVenues;
+  }
+
+  public void setOwnedVenues(List<Venue> ownedVenues) {
+    this.ownedVenues = ownedVenues;
+  }
+
+  public List<Participants> getParticipationHistory() {
+    return participationHistory;
+  }
+
+  public void setParticipationHistory(List<Participants> participationHistory) {
+    this.participationHistory = participationHistory;
   }
 
   //  default constructor

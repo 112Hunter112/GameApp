@@ -1,135 +1,81 @@
-# 📚 Java & Spring Boot Master Guide
-**Created for:** Parth Aditya
-**Project:** SportsBackend
+# 📚 Java & Spring Boot Master FAQ
+**Project:** Sports Application Backend  
+**Topic:** Backend Development, JPA Modeling & Hibernate
 
 ---
 
-## 1. Database & Transactions
+## 🛠 Core Spring Boot Concepts
 
-### Q: What is `@Transactional`?
-**The Concept:**
-Think of `@Transactional` as an "All or Nothing" safety switch. It wraps a specific method in a safety bubble. If *anything* goes wrong (an exception is thrown) inside that bubble, Spring hits the **Undo Button** (Rollback) on the database, reverting all changes made during that method.
+### 1️⃣ What is @Transactional?
+A safety wrapper ensuring **"All or Nothing"** database behavior. If any operation inside the method fails, Spring rolls back all DB changes to prevent data corruption.
+* **Example:** Used in `AuthService.register` because saving a user and sending a verification email must both succeed together.
 
-**Why we used it in `AuthService.register`:**
-We perform two distinct actions in this method:
-1.  Save the `User` to the database.
-2.  Send an email via Google's SMTP server.
+### 2️⃣ What is JWT (JSON Web Token)?
+A **stateless** authentication token that functions like a digitally signed ID card.
+* It allows the server to verify a user's identity without storing session data in server memory.
 
-If step 1 succeeds but step 2 fails (e.g., bad wifi, wrong password), we don't want a "ghost user" in the database who exists but can never verify their account. `@Transactional` ensures that if the email fails, the user is deleted from the DB automatically.
+### 3️⃣ What is SecurityConfig?
+A configuration class that defines the security rules for your application:
+* **Public Endpoints:** Paths like `/api/auth/**` are permitted for everyone to allow registration and login.
+* **Protected Routes:** Any other request requires a valid JWT to be authenticated.
+* **CSRF:** Disabled for this REST API to simplify authentication for mobile clients (React Native).
 
-### Q: Why did the database crash with "Column contains null values"?
-**The Concept:**
-In SQL, a `NOT NULL` column means every single row **must** have a value.
-When you added `private Boolean isVerified = false;` to your Java model, you were telling the database: "Create a new column called `is_verified` and make sure it is never empty."
-
-**The Problem:**
-You had old users (from 4 days ago) in the database. When the database tried to add the new column to those old rows, it didn't know what value to put there. It defaulted to `NULL`, which violated your `NOT NULL` rule.
-
-**The Fix:**
-We used manual SQL (`ALTER TABLE users ADD COLUMN... DEFAULT FALSE`) to tell the database: "For all the old guys, just set this value to False."
+### 4️⃣ What does @Valid do?
+Triggers automatic validation of a DTO (Data Transfer Object) before the controller logic executes.
+* It checks annotations like `@NotBlank` or `@Email` and stops invalid requests immediately with a 400 Bad Request error.
 
 ---
 
-## 2. Authentication & Security
+## 🧱 JPA & Database Modeling Deep Dive
 
-### Q: What is JWT (JSON Web Token)?
-**The Concept:**
-A JWT is a "Digital ID Card" that is cryptographically signed.
-* **Old Way (Sessions):** The server keeps a list of logged-in users in memory. If the server restarts, everyone gets logged out.
-* **New Way (JWT):** The server gives the user a signed token (the ID card). The user holds onto it.
+### 5️⃣ @ManyToOne vs @OneToMany: Which side "owns" the link?
+In a standard relationship (like Venue and Courts):
+* **@ManyToOne (The "Child" Side):** This is the **Owner**. It creates the actual foreign key column in the database (e.g., `venue_id`).
+* **@OneToMany (The "Parent" Side):** This is the **Inverse** side. It uses the `mappedBy` attribute to reference the field in the child class and does not create a new column.
 
-**Why we use it:**
-It makes the backend **Stateless**. The server doesn't need to remember who is logged in. When the mobile app sends a request with the token attached, the server checks the signature and knows, "Ah, this is Parth, and he is a verified User."
+### 6️⃣ What is @JoinColumn?
+This annotation is used to explicitly **name** the foreign key column in your database table.
+* It lives on the **Owner** of the relationship.
+* **Benefit:** It ensures your Java model matches your SQL schema exactly (e.g., `@JoinColumn(name="sport_id")`).
 
-### Q: What is `SecurityConfig` and the "Bouncer"?
-**The Concept:**
-Spring Security is like a vault door—it locks everything by default. `SecurityConfig` is where you give instructions to the security guard (The Bouncer).
+### 7️⃣ Handling Many-to-Many with Extra Data (Bridge Entities)
+When a relationship needs its own data (like a user's `proficiency_level` for a specific sport), you use a **Bridge Entity** instead of a simple `@ManyToMany`.
+* **The Structure:** Create a dedicated entity (e.g., `UserPreference`) that has `@ManyToOne` links to both parent entities.
 
-**Our Configuration:**
-* `.requestMatchers("/api/auth/**").permitAll()`: "Let anyone into the lobby (Register/Login pages)."
-* `.anyRequest().authenticated()`: "Check ID (JWT) for every other room."
-* `.csrf(disable)`: We disable CSRF (Cross-Site Request Forgery) because that protection is for browser sessions, and we are using mobile JWTs.
+### 8️⃣ What are @EmbeddedId and @MapsId?
+These are used for **Composite Primary Keys** in bridge tables.
+* **@EmbeddedId:** Points to an `@Embeddable` class containing the multiple IDs that form the primary key.
+* **@MapsId:** Syncs the ID from the parent entity (e.g., `User`) into the correct field of the composite ID class automatically.
 
-### Q: What is `BCryptPasswordEncoder`?
-**The Concept:**
-You should **never** store passwords in plain text (e.g., "Password@123"). If a hacker stole your database, they would have everyone's passwords.
-`BCrypt` scrambles the password into a random string (hash) like `$2a$10$WsK86n...`. It is a "one-way" function—you can turn a password into a hash, but you cannot turn a hash back into a password.
+### 9️⃣ Why use BigDecimal for Money?
+**Double** and **Float** can lead to tiny rounding errors during calculations.
+* **BigDecimal:** Provides absolute precision for currency. Always use it for `hourly_rate`, `total_price`, and financial transactions.
 
----
-
-## 3. Email & Messaging
-
-### Q: What is `MimeMessage` vs `SimpleMailMessage`?
-**The Difference:**
-* **`SimpleMailMessage`:** Like a sticky note. Pure text. No formatting.
-* **`MimeMessage`:** Like a webpage. Supports **HTML**, bold text, colors, and clickable links.
-
-**Why we switched:**
-You needed the user to click a link (`<a href="...">Verify</a>`). You cannot create a clickable hyperlink in a `SimpleMailMessage`.
-
-### Q: What is `MimeMessageHelper`?
-**The Concept:**
-Java's native email code is very old and complex. `MimeMessageHelper` is a utility class provided by Spring that acts as a "Wrapper." It hides the ugly low-level code and gives you easy methods like `.setTo()`, `.setSubject()`, and `.setText(html, true)`.
-
-### Q: Why did I get "Authentication Failed" when sending email?
-**The Concept:**
-You cannot use your standard Gmail password for code access anymore. Google considers code (like your Spring Boot app) as a "Less Secure App."
-You had to generate an **App Password** (a 16-character code) that is specifically generated for this application to log in securely without needing 2-Factor Authentication every time.
+### 🔟 How to map PostgreSQL "jsonb" and "text[]"?
+* **For jsonb (e.g., openingHours):** Use `@JdbcTypeCode(SqlTypes.JSON)` on a `Map<String, Object>` field.
+* **For text[] (e.g., amenities):** Use `@ElementCollection`. This stores a simple list of strings in a separate table without requiring a full Java entity.
 
 ---
 
-## 4. API & Controller Logic
+## 🏗 Architecture & Logic
 
-### Q: What is `ResponseEntity<?>`?
-**The Concept:**
-In Java, a method usually has to return one specific thing (e.g., an `Integer`).
-But in a REST API, sometimes you want to return an Object (Success) and sometimes a String (Error Message).
+### 11️⃣ What is the Service Layer?
+The **"Brain"** of your application. While Entities hold data and Repositories fetch data, the Service Layer handles the **Verbs**:
+* **Orchestration:** Coordinates multiple repositories to complete a task.
+* **Business Rules:** Enforces logic, such as "Only verified users can book a court."
 
-`ResponseEntity<?>` uses a "Wildcard" (`?`). It tells Java: "I am going to return an HTTP Response, but the body of that response might be different types depending on what happens."
+### 12️⃣ Sports.max_players vs. Courts.capacity
+* **Sports.max_players:** The standard rules for the sport (e.g., 10 players for Basketball).
+* **Courts.capacity:** The physical limit of that specific court (e.g., a small court might only fit 8 people safely).
+* **The Logic:** A match is only valid if the number of players is within **both** limits.
 
-### Q: What does `@Valid` do?
-**The Concept:**
-It is the automated Gatekeeper.
-In your `RegisterRequest` DTO, you added annotations like `@NotBlank` and `@Email`.
-When you put `@Valid` in the Controller (`public void register(@Valid ...)`), Spring checks all those rules **before** the code even runs. If the email is invalid, Spring blocks the request immediately.
-
-### Q: Why use `try-catch` in the Controller?
-**The Concept:**
-If your Service layer throws an error (like "Email already exists") and nobody catches it, the server panics and returns a `500 Internal Server Error`. This looks bad to the user.
-By using `try-catch`, we catch that panic and convert it into a calm `400 Bad Request` with a nice message explaining exactly what went wrong.
+### 13️⃣ What is the Vertical Slice flow?
+A development strategy where you build one feature completely (from Database to Controller) before moving to the next.
+* **Typical Flow:** `Entity` -> `Repository` -> `Service` -> `Controller`.
 
 ---
 
-## 5. Maven & Project Configuration
-
-### Q: What is `pom.xml`?
-**The Concept:**
-POM stands for **Project Object Model**. It is the "Recipe" for your application.
-It tells Maven (the chef):
-1.  **Dependencies:** What ingredients (libraries) to download from the internet (e.g., Spring Web, Postgres Driver, JWT).
-2.  **Plugins:** What tools to use to build the code.
-3.  **Versions:** Which version of Java and Spring Boot to use.
-
-### Q: Why was I getting "Cannot resolve symbol 'jakarta'"?
-**The Concept:**
-Your `pom.xml` was asking for **Spring Boot 4.0.0**, which does not exist yet.
-Because the version was wrong, Maven couldn't find the "Parent" project.
-Because it couldn't find the Parent, it refused to download *any* dependencies.
-Without dependencies, your IDE didn't know what `jakarta` or `springframework` was, so it marked everything in red.
-
-### Q: What does "Reload Maven Project" do?
-**The Concept:**
-Changing the text in `pom.xml` doesn't instantly change the project structure. You have to "Reload" to force the IDE to read the file again, go to the internet, download the new libraries, and index them.
-
----
-
-## 6. Git & Version Control
-
-### Q: What is the "LF will be replaced by CRLF" warning?
-**The Concept:**
-* **LF (Line Feed):** How Linux/Mac computers mark the end of a line (Typewriter style: push paper up).
-* **CRLF (Carriage Return + Line Feed):** How Windows computers mark the end of a line (Typewriter style: slide carriage back + push paper up).
-
-**The Warning:**
-Git is smart. It stores files in the Linux format (LF) in the cloud so everyone is compatible.
-When you are on Windows, Git says: "I'm converting these files to Windows format (CRLF) so they look right in your text editor, but I'll convert them back when you push." **It is a safe warning to ignore.**
+## 💡 Quick Tips
+* **mappedBy** always points to the **Java variable name** in the owning class, not the table name.
+* Always include a **No-Arg Constructor** in your Entities, as JPA requires it to instantiate objects.
+* Use **camelCase** in Java; Hibernate will automatically convert it to **snake_case** in PostgreSQL.

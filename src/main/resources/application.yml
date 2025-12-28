@@ -6,7 +6,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/sportsapp
     username: postgres
-    password: ${db.password}
+    password: password
   jpa:
     hibernate:
       ddl-auto: update
