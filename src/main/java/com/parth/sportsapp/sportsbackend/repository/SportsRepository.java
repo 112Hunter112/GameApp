@@ -1,13 +1,14 @@
 package com.parth.sportsapp.sportsbackend.repository;
 
 import com.parth.sportsapp.sportsbackend.model.Sports;
-import org.hibernate.query.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.awt.print.Pageable;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,6 +37,10 @@ public interface SportsRepository extends JpaRepository<Sports, UUID> {
   @Query(value = "SELECT * FROM sports WHERE is_active = true ORDER BY sport_name", nativeQuery = true)
   List<Sports> getActiveSportsNative();
 
+  Page<Sports> findByIsActiveTrue(Pageable pageable);
 
+  List<Sports> findBySportNameContainingIgnoreCase(String keyword);
+
+  List<Sports> findByMinPlayersGreaterThanEqualOrMaxPlayersLessThanEqual(int min, int max);
 
 }

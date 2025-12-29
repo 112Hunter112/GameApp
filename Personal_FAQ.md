@@ -79,3 +79,73 @@ A development strategy where you build one feature completely (from Database to 
 * **mappedBy** always points to the **Java variable name** in the owning class, not the table name.
 * Always include a **No-Arg Constructor** in your Entities, as JPA requires it to instantiate objects.
 * Use **camelCase** in Java; Hibernate will automatically convert it to **snake_case** in PostgreSQL.
+
+
+Here is the comprehensive guide to the knowledge and concepts you gained during this troubleshooting session. This covers the why and how of the technologies you are using, rather than just the code fixes.
+
+Markdown
+
+# Backend Development & DevOps Knowledge Guide
+
+## 1. Troubleshooting 403 Forbidden Errors
+A **403 Forbidden** error means the server knows who you are (or that you are anonymous) but refuses to give you access to the resource. In Spring Boot, this is almost always caused by **Spring Security**.
+
+### Common Causes & Fixes
+* **The "Deny All" Default:**
+    * **Concept:** Spring Security is "secure by default." If you don't explicitly allow an endpoint, it blocks it.
+    * **The Fix:** You must configure a `SecurityFilterChain` bean. Use `.requestMatchers("/path/**").permitAll()` to open public endpoints like Login or Register.
+* **URL Mismatches (The "Missing Slash" Trap):**
+    * **Concept:** Security rules are precise. If your config allows `/api/auth/**` but your controller is mapped to `api/auth` (no leading slash), Spring treats them as different paths. The request falls through to the "catch-all" rule (usually "Authenticate Everything"), resulting in a 403.
+    * **The Fix:** Always ensure your `@RequestMapping` paths in Controllers exactly match your Security Config patterns.
+* **CSRF (Cross-Site Request Forgery):**
+    * **Concept:** A security feature that blocks state-changing requests (POST, PUT, DELETE) from browsers unless a special token is present.
+    * **The Fix:** For stateless REST APIs (like used by mobile apps or Postman), you usually disable this: `.csrf(csrf -> csrf.disable())`.
+
+---
+
+## 2. Docker vs. Docker Compose
+You are using two distinct tools that work together to run your application.
+
+### The `Dockerfile` (The Blueprint)
+* **Purpose:** Defines how to build a **single** container image. It is like a recipe for a cake.
+* **How it works in your project:**
+    1.  **`FROM`**: Starts with a lightweight Linux OS with Java installed (`eclipse-temurin:17-jre-alpine`).
+    2.  **`COPY`**: Moves your compiled code (`.jar` file) and your **secrets file** (`application-secrets.properties`) inside the container.
+    3.  **`ENTRYPOINT`**: Tells the container what command to run when it turns on (`java -jar app.jar`).
+
+### The `docker-compose.yml` (The Conductor)
+* **Purpose:** Manages **multiple** containers at once. It defines the relationships, networking, and environment variables between them.
+* **Key Concepts:**
+    * **Services:** The different parts of your app. You have `db` (Postgres) and `app` (Spring Boot).
+    * **Networking:** Docker Compose creates a private network. Your app can talk to the database using the hostname `db` instead of an IP address because they are in the same "compose" group.
+    * **Volumes:** (`postgres_data:/var/lib/postgresql/data`) This ensures that even if you delete the database container, your actual data (users, matches) is saved on your hard drive and isn't lost.
+
+---
+
+## 3. Essential Commands Cheat Sheet
+
+### Maven (Build Tool)
+Used to compile your Java code and package it into a `.jar` file.
+* **Run App Locally:** `./mvnw spring-boot:run` (Compiles and starts the server on your machine).
+* **Build JAR File:** `./mvnw clean package` (Creates the `.jar` file in the `target/` folder, required before building a Docker image).
+* **Clean Build:** `./mvnw clean install` (Wipes old files and rebuilds everything from scratch; good for fixing weird errors).
+
+### Docker (Container Tool)
+* **Start Containers:** `docker-compose up -d`
+    * `up`: Create and start containers.
+    * `-d`: Detached mode (runs in the background so it doesn't lock up your terminal).
+* **Stop Containers:** `docker-compose down` (Stops and removes the containers).
+* **Check Status:** `docker ps` (Shows running containers) or `docker ps -a` (Shows all containers, even stopped ones).
+* **View Logs:** `docker logs -f <container_name>` (Stream logs from a specific container, e.g., `docker logs -f sports-db`).
+* **Rebuild Images:** `docker-compose up -d --build` (Forces Docker to re-read your `Dockerfile` and compile a new image, useful if you changed Java code).
+
+---
+
+## 4. Development Workflow Summary
+This is the "Hybrid" workflow we established for you, which is best for active development:
+
+1.  **Database:** Run it in Docker (`docker-compose up -d db`). This keeps your machine clean and ensures you always have the correct Postgres version.
+2.  **Application:** Run it locally (`./mvnw spring-boot:run`). This allows for faster restarting and easier debugging than running the app inside Docker.
+3.  **Configuration:** Your `application.yml` is smart. It looks for the environment variable `DB_HOST`.
+    * **Locally:** It defaults to `localhost`.
+    * **In Docker:** It uses the container name `db`.
