@@ -65,6 +65,9 @@ public class Venue {
   @OneToMany(mappedBy = "venue", cascade = CascadeType.ALL)
   private List<Courts> courts;
 
+  @Column(name = "is_active", nullable = false)
+  private boolean isActive = true;
+
   // --- Constructors ---
 
   public Venue() {}
@@ -116,5 +119,21 @@ public class Venue {
 
   public Double getLongitude() {
     return location != null ? location.getX() : null;
+  }
+
+  public boolean isActive() {
+    return isActive;
+  }
+
+  public void setActive(boolean active) {
+    isActive = active;
+  }
+
+  public Point getLocation() {
+    return location;
+  }
+
+  public void setLocation(Point location) {
+    this.location = location;
   }
 }

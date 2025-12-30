@@ -26,10 +26,15 @@ public class JwtUtil {
   @Value("${jwt.expiration}")
   private long EXPIRATION_TIME;
 
-  public String generateToken(String email) {
+  public String generateToken(String email, UUID userId) {
     Map<String, Object> claims = new HashMap<String, Object>(); // this is to store extra info,
     // such as postion of user and other metadata, so we don't retrieve from db
+    claims.put("userId", userId.toString());
     return createToken(claims, email);
+  }
+
+  public String extractUserId(String token) {
+    return extractClaim(token, claims -> claims.get("userId", String.class));
   }
 
   public String createToken(Map<String, Object> claims, String subject) {

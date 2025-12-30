@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
+import org.springframework.data.repository.query.Param;
 
 public interface VenueRepository extends JpaRepository<Venue, UUID> {
 
@@ -28,4 +29,25 @@ List<Venue> findByAddressContainingIgnoreCase(String address);
   Page<Venue> findAll(Pageable pageable);
 
   List<Venue> findAllByOrderByCreatedAtDesc();
+
+  // returns a list * of all Venues with Owner_id
+  List<Venue> findByOwner_Id(UUID id);
+
+  // inside VenueRepository interface
+  boolean existsByNameIgnoreCaseAndAddressIgnoreCase(String name, String address);
+
+  @Query(value = """
+        SELECT * FROM venues v
+        WHERE v.is_active = true
+        AND ST_DWithin(
+            v.location, 
+            ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, 
+            :radius
+        )
+    """, nativeQuery = true)
+  List<Venue> findNearby(
+      @Param("lat") double lat,
+      @Param("lon") double lon,
+      @Param("radius") double radiusInMeters
+  );
 }
