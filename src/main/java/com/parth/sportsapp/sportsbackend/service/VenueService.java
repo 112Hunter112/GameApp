@@ -45,6 +45,8 @@ public class VenueService {
 @Autowired
 private UserRepository userRepository;
 
+  private static final double KM_TO_METERS = 1000.0;
+
 
 
   // ----------------VENDOR SIDE ------------------
@@ -216,7 +218,7 @@ private UserRepository userRepository;
 
   public List<Venue> searchNearbyVenues(double lat, double lon, double radiusKm) {
     // 1. Convert KM to Meters (PostGIS geography uses meters)
-    double radiusMeters = radiusKm * 1000;
+    double radiusMeters = radiusKm * KM_TO_METERS;
 
     // 2. Call the repository
     return venueRepository.findNearby(lat, lon, radiusMeters);
