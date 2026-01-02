@@ -1,17 +1,22 @@
 package com.parth.sportsapp.sportsbackend.service;
 
 
+import com.parth.sportsapp.sportsbackend.dto.VenueRequest;
+import com.parth.sportsapp.sportsbackend.dto.VenueResponse;
+import com.parth.sportsapp.sportsbackend.mapper.VenueMapper;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.model.Venue;
 import com.parth.sportsapp.sportsbackend.repository.SportsRepository;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
 import com.parth.sportsapp.sportsbackend.repository.VenueRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable; // <--- ADD THIS
 
 
 
@@ -32,74 +37,73 @@ The Result: Returns [Court 1, Court 2].
 
 
 
-@Service  @Transactional
-
+@Service
+@Transactional
 public class VenueService {
-
-  // Add this library (JTS) to handle the shapes
-  private final org.locationtech.jts.geom.GeometryFactory geometryFactory = new org.locationtech.jts.geom.GeometryFactory();
 
   @Autowired
   private VenueRepository venueRepository;
+
+  @Autowired
+  private VenueMapper venueMapper;
 
 @Autowired
 private UserRepository userRepository;
 
   private static final double KM_TO_METERS = 1000.0;
+  private static final double MAX_SEARCH_RADIUS_KM = 50.0;
+  private static final double DEFAULT_SEARCH_RADIUS_KM = 10.0;
 
 
 
   // ----------------VENDOR SIDE ------------------
 
   //list all venues for the vendor after verifying that it is a VENDOR
-  public List<Venue> findVenueByOwnerId(UUID vendorId) {
+  public List<VenueResponse> findVenueByOwnerId(UUID vendorId) {
 
     // checks to see if the vendor exists, this implicitly chekcs if person is a VENDOR
     User vendor = userRepository.findById(vendorId)
         .orElseThrow(() -> new RuntimeException("Vendor not found"));
 
-    return venueRepository.findByOwner_Id(vendor.getId());
+    List<Venue> venues = venueRepository.findByOwner_Id(vendorId);
+
+    return venueMapper.toResponseList(venues);
   }
 
   /**
    *
    * @param vendorId the UUID the of the user from the jwt
-   * @param venue the data the user entered and then pressed save
+   * @param venueRequest the data the user entered and then pressed save
    * @return a saved Venue of the data the user entered on the frontend
    */
-  public Venue createVenue(UUID vendorId, Venue venue) {
-    // 0. Opens a list to fill out which the user does and when they press save we call this method
+  public VenueResponse createVenue(UUID vendorId, VenueRequest venueRequest) {
+    // Opens a list to fill out which the user does and when they press save we call this method
 
     // 0.1 Checks that this person passing it through has a valid ID and in VENDOR owner list
     User vendor = userRepository.findById(vendorId)
         .orElseThrow(() -> new RuntimeException("Vendor not found"));
 
-    // 0.2 FORCE the ownership here
-    venue.setOwner(vendor);
+    Venue venueEntity = venueMapper.toEntity(venueRequest, vendor);
 
-    if (venue.getLatitude() != null && venue.getLongitude() != null) {
-      org.locationtech.jts.geom.Point point = geometryFactory.createPoint(
-          new org.locationtech.jts.geom.Coordinate(venue.getLongitude(), venue.getLatitude())
-      );
-      venue.setLocation(point);
-    }
+
 
     // 1. Unique name, address, phone number, etc.
-    validateVenueInfo(venue);
+    validateVenueInfo(venueEntity);
 
     // 2. Check for Duplicates
-    if (venue.getId() == null) { // Only check duplicates if it's a NEW venue
-      boolean exists = venueRepository.existsByNameIgnoreCaseAndAddressIgnoreCase(
-          venue.getName(),
-          venue.getAddress()
-      );
+    // Check for duplicates (always, since it's a new venue)
+    boolean exists = venueRepository.existsByNameIgnoreCaseAndAddressIgnoreCase(
+        venueRequest.getName(),
+        venueRequest.getAddress()
+    );
 
-      if (exists) {
-        throw new RuntimeException("A venue with this name and address already exists!");
-      }
+    if (exists) {
+      throw new RuntimeException("A venue with this name and address already exists!");
     }
 
-    return venueRepository.save(venue);
+    Venue savedVenue = venueRepository.save(venueEntity);
+
+    return venueMapper.toResponse(savedVenue);
   }
 
   /**
@@ -108,10 +112,10 @@ private UserRepository userRepository;
    *
    * @param venueId this is the ID of the box the user clicked on
    * @param vendorId this comes from the UUID
-   * @param update_venue
+   * @param updateRequest
    * @return
    */
-  public Venue updateVenue(UUID venueId,  UUID vendorId, Venue update_venue) {
+  public VenueResponse updateVenue(UUID venueId,  UUID vendorId, VenueRequest updateRequest) {
 
  // 0.1 check if venue exists using venueId, before we update, has not been compared to
     // vendors' current active venue
@@ -123,29 +127,26 @@ private UserRepository userRepository;
       throw new RuntimeException("ACCESS DENIED: You do not own this venue.");
     }
 
-    if (update_venue.getLatitude() != null && update_venue.getLongitude() != null) {
-      org.locationtech.jts.geom.Point point = geometryFactory.createPoint(
-          new org.locationtech.jts.geom.Coordinate(update_venue.getLongitude(), update_venue.getLatitude())
-      );
-      update_venue.setLocation(point);
-    }
 
+    // THIS PART IS DONE BY THE MAPPER NOW
+//    if (updateRequest.getLatitude() != null && updateRequest.getLongitude() != null) {
+//      org.locationtech.jts.geom.Point point = geometryFactory.createPoint(
+//          new org.locationtech.jts.geom.Coordinate(updateRequest.getLongitude(), updateRequest.getLatitude())
+//      );
+//      updateRequest.setLocation(point);
+//    }
 
-    //2. validate the new info the user has entered
-    validateVenueInfo(update_venue);
+    // Validate AFTER updating
+    venueMapper.updateEntity(existingVenue, updateRequest);
 
-    existingVenue.setName(update_venue.getName());
-    existingVenue.setAddress(update_venue.getAddress());
-    existingVenue.setPhoneNumber(update_venue.getPhoneNumber());
-    existingVenue.setDescription(update_venue.getDescription());
-    existingVenue.setOpeningHours(update_venue.getOpeningHours());
-    existingVenue.setAmenities(update_venue.getAmenities());
-    if (update_venue.getLocation() != null) {
-      existingVenue.setLocation(update_venue.getLocation());
-    }
+    validateVenueInfo(existingVenue);  // Now validate the updated entity
 
-    return venueRepository.save(existingVenue); // save old venue with new content
+    Venue savedVenue = venueRepository.save(existingVenue);
+
+    return venueMapper.toResponse(savedVenue);
   }
+
+
 
   /**
    *
@@ -213,16 +214,59 @@ private UserRepository userRepository;
 
   }
 
+  /**
+   * Get single venue by ID (for detail page)
+   */
+  public VenueResponse getVenueById(UUID venueId) {
+    Venue venue = venueRepository.findById(venueId)
+        .orElseThrow(() -> new RuntimeException("Venue not found"));
+
+    // Only show active venues to users (optional - depends on your business logic)
+    if (!venue.isActive()) {
+      throw new RuntimeException("Venue not found");
+    }
+
+    return venueMapper.toResponse(venue);
+  }
+
 
   // ----------------USER SIDE ------------------
 
-  public List<Venue> searchNearbyVenues(double lat, double lon, double radiusKm) {
-    // 1. Convert KM to Meters (PostGIS geography uses meters)
-    double radiusMeters = radiusKm * KM_TO_METERS;
+  public Page<VenueResponse> searchNearbyVenues(double lat, double lon, double radiusKm, Pageable pageable) {
+    // 1. Validate Coordinates
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      throw new RuntimeException("Invalid latitude or longitude");
+    }
 
-    // 2. Call the repository
-    return venueRepository.findNearby(lat, lon, radiusMeters);
+    // 2. [FIX] Validate Radius and capture the CLEAN value
+    // This ensures we use the logic inside 'validateRadius' (max 50km, etc.)
+    double validRadiusKm = validateRadius(radiusKm);
+
+    // 3. Convert valid radius to Meters
+    double radiusMeters = validRadiusKm * KM_TO_METERS;
+
+    // 4. Fetch Page
+    Page<Venue> venuePage = venueRepository.findVenuesNearby(lat, lon, radiusMeters, pageable);
+
+    // 5. Map to DTO
+    return venuePage.map(venue -> venueMapper.toResponse(venue));
   }
+
+  private double validateRadius(Double radiusKm) {
+    if (radiusKm == null) {
+      return DEFAULT_SEARCH_RADIUS_KM;
+    }
+    if (radiusKm <= 0) {
+      throw new IllegalArgumentException("Radius must be positive");
+    }
+    if (radiusKm > MAX_SEARCH_RADIUS_KM) {
+      throw new IllegalArgumentException(
+          "Radius cannot exceed " + MAX_SEARCH_RADIUS_KM + " km"
+      );
+    }
+    return radiusKm;
+  }
+
 
 
 }

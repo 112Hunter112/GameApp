@@ -12,7 +12,6 @@ public interface CourtRepository extends JpaRepository<Courts, UUID> {
 
   //  ---- Find all possible courts at the venue
 
-  List<Courts> findByVenue_ID(UUID id);
 
   List<Courts> findByVenue_IdAndSports_Id(UUID venueId, UUID sportId);
 
@@ -24,7 +23,7 @@ public interface CourtRepository extends JpaRepository<Courts, UUID> {
   List<Courts> findByIsActiveTrue();
 
 
-  List<Courts> findByVenue_Id(UUID venueId);
+  List<Courts> findByVenue_Id(UUID Id);
 
 
   List<Courts> findByIsIndoorTrue(boolean isIndoor);

@@ -13,10 +13,31 @@ import org.springframework.data.repository.query.Param;
 
 public interface VenueRepository extends JpaRepository<Venue, UUID> {
 
-  @Query(value = "SELECT * FROM venues v WHERE " +
-      "ST_DWithin(v.location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), :radiusInMeters)",
+  @Query(value = """
+        SELECT * FROM venues v
+        WHERE v.is_active = true 
+        AND ST_DWithin(
+            v.location::geography,  -- Cast column to geography for meter calculation
+            ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, 
+            :radius
+        )
+        """,
+      countQuery = """
+        SELECT count(*) FROM venues v 
+        WHERE v.is_active = true 
+        AND ST_DWithin(
+            v.location::geography, 
+            ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, 
+            :radius
+        )
+        """,
       nativeQuery = true)
-  List<Venue> findVenuesNearby(double lat, double lng, double radiusInMeters);
+  Page<Venue> findVenuesNearby(
+      @Param("lat") double lat,
+      @Param("lng") double lng,
+      @Param("radius") double radius,
+      Pageable pageable
+  );
 
   List<Venue> findByNameContainingIgnoreCase(String name);
 
@@ -36,18 +57,5 @@ List<Venue> findByAddressContainingIgnoreCase(String address);
   // inside VenueRepository interface
   boolean existsByNameIgnoreCaseAndAddressIgnoreCase(String name, String address);
 
-  @Query(value = """
-        SELECT * FROM venues v
-        WHERE v.is_active = true
-        AND ST_DWithin(
-            v.location, 
-            ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, 
-            :radius
-        )
-    """, nativeQuery = true)
-  List<Venue> findNearby(
-      @Param("lat") double lat,
-      @Param("lon") double lon,
-      @Param("radius") double radiusInMeters
-  );
+
 }

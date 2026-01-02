@@ -26,10 +26,12 @@ public class JwtUtil {
   @Value("${jwt.expiration}")
   private long EXPIRATION_TIME;
 
-  public String generateToken(String email, UUID userId) {
+  public String generateToken(String email, UUID userId, String role) {
     Map<String, Object> claims = new HashMap<String, Object>(); // this is to store extra info,
     // such as postion of user and other metadata, so we don't retrieve from db
     claims.put("userId", userId.toString());
+
+    claims.put("role", "ROLE_" + role);
     return createToken(claims, email);
   }
 
@@ -53,6 +55,10 @@ public class JwtUtil {
     //convert SECRET_KEY to bytes and also hash it
     byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
     return Keys.hmacShaKeyFor(keyBytes);
+  }
+
+  public String extractRole(String token) {
+    return extractClaim(token, claims -> claims.get("role", String.class));
   }
 
   public String extractEmail(String token) {

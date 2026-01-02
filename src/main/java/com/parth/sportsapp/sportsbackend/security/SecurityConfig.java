@@ -1,12 +1,16 @@
 package com.parth.sportsapp.sportsbackend.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -15,12 +19,16 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
   }
+
+  @Autowired
+  private JwtAuthenticationFilter jwtAuthenticationFilter; // <--- Inject the filter
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -33,17 +41,28 @@ public class SecurityConfig {
 
         // 3. CONFIGURE URL PERMISSIONS (ORDER MATTERS!)
         .authorizeHttpRequests(auth -> auth
-            // Public endpoints (no authentication needed)
-            .requestMatchers("/api/auth/**").permitAll()    // Login, Register, Verify
-            .requestMatchers("/hello").permitAll()          // Test endpoint
+            // --- NEW: Allow Swagger UI & API Docs ---
+            .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-            // TEMPORARILY allow everything for development
-            .anyRequest().permitAll()  // CHANGE THIS LATER to .authenticated()
+            // --- NEW: Allow Public Venue Search (GET only) ---
+            .requestMatchers(HttpMethod.GET, "/api/venues/search").permitAll()
+
+            // Public Auth endpoints
+            .requestMatchers("/api/auth/**").permitAll()
+            .requestMatchers("/hello").permitAll()
+
+            // ALL OTHER REQUESTS
+            // currently allowing all for dev, but standard security is: .anyRequest().authenticated()
+            .anyRequest().authenticated()
         )
 
-        // 4. DISABLE form login and HTTP basic (not needed for REST APIs)
+        // 4. DISABLE form login and HTTP basic
         .formLogin(login -> login.disable())
-        .httpBasic(basic -> basic.disable());
+        .httpBasic(basic -> basic.disable())
+
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+
 
     return http.build();
   }
@@ -62,8 +81,8 @@ public class SecurityConfig {
     // Allow all headers
     configuration.setAllowedHeaders(Arrays.asList("*"));
 
-    // Allow credentials (cookies, authorization headers)
-    configuration.setAllowCredentials(false); // Must be false when origin is "*"
+    // Allow credentials must be false when origin is "*"
+    configuration.setAllowCredentials(false);
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);

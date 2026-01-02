@@ -32,6 +32,8 @@ public class RegisterRequest {
   @Pattern(regexp = "^[0-9]{10}$", message = "Phone number must be 10 digits")
   private String phoneNumber;
 
+  private String role;
+
   // No-arg constructor (required for JSON deserialization)
   public RegisterRequest() {
   }
@@ -95,6 +97,15 @@ public class RegisterRequest {
 
   public void setPhoneNumber(String phoneNumber) {
     this.phoneNumber = phoneNumber;
+  }
+
+  public String getRole() {
+    return role;
+  }
+
+  // Add Setter
+  public void setRole(String role) {
+    this.role = role;
   }
 
 }

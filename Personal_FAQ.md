@@ -149,3 +149,50 @@ This is the "Hybrid" workflow we established for you, which is best for active d
 3.  **Configuration:** Your `application.yml` is smart. It looks for the environment variable `DB_HOST`.
     * **Locally:** It defaults to `localhost`.
     * **In Docker:** It uses the container name `db`.
+
+# Docker vs. Docker Compose vs. JAR Files: A Breakdown
+
+## 1. The Roles
+To understand why the build fails or succeeds, you need to know who is responsible for what.
+
+### **The JAR File (`app.jar`)**
+* **What it is:** The actual compiled "executable" of your Spring Boot application.
+* **Who creates it:** Maven (`mvn clean package`).
+* **Where it lives:** Inside the `target/` folder on your computer (or inside the build stage of a multi-stage Dockerfile).
+
+### **Docker (`docker build`)**
+* **The Blueprint:** Uses the `Dockerfile` as a set of instructions.
+* **The Job:** It packages your application code (the JAR) and the runtime environment (Java) into a single "Image".
+* **Crucial Limitation:** A standard `Dockerfile` **does not know how to compile code**. It only knows how to move files. If you tell it to `COPY` a file that doesn't exist, it crashes.
+
+### **Docker Compose (`docker-compose up`)**
+* **The Manager:** It orchestrates multiple containers (like your App and your Database).
+* **The Trigger:** When you run `docker-compose up --build`, it tells Docker: *"Hey, go run the build command for me."* It doesn't build the image itself; it delegates that task to the Docker engine.
+
+---
+
+## 2. The "Trap" of the Standard Dockerfile
+In a standard setup, the workflow is split between **You** and **Docker**.
+
+**Your `Dockerfile` instruction:**
+```dockerfile
+COPY target/*.jar app.jar
+
+1.  **You** run `mvn clean package` on your laptop. -> Creates `target/app.jar`.
+2.  **You** run `docker build`.
+3.  **Docker** runs the `COPY` command. It looks at your laptop's `target/` folder, finds the JAR, and copies it.
+
+### Why it fails
+If you forget step #1, or if you modify your code (like changing `SecurityConfig.java`) but forget to run `mvn package` again, Docker blindly copies the **old** (or missing) JAR. This is why your changes didn't show up earlier!
+
+---
+
+### 3. The Solution: Multi-Stage Builds
+To fix this "human error" element, we use a **Multi-Stage Dockerfile**. This shifts the responsibility of compiling the code from **You** to **Docker**.
+
+#### How it works:
+* **Stage 1 (The Builder):** Docker downloads Maven, copies your source code (`src/` and `pom.xml`), and runs `mvn package` **inside** the container.
+* **Stage 2 (The Runner):** Docker discards all the heavy Maven tools and source code. It simply `COPY`s the resulting `.jar` file from Stage 1 into the final lightweight Java image.
+
+#### The Benefit:
+You never have to run `mvn package` on your laptop again. Running `docker-compose up --build` guarantees your container is running the absolute latest version of your code.

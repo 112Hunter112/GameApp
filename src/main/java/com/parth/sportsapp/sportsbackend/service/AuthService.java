@@ -67,7 +67,11 @@ public class AuthService {
     newUser.setFirstName(registerRequest.getFirstName());
     newUser.setLastName(registerRequest.getLastName());
     newUser.setPhoneNumber(registerRequest.getPhoneNumber());
-    newUser.setRole(UserRole.USER); // Set the default role
+    if (registerRequest.getRole() != null && registerRequest.getRole().equalsIgnoreCase("VENUE_OWNER")) {
+      newUser.setRole(UserRole.VENUE_OWNER);
+    } else {
+      newUser.setRole(UserRole.USER);
+    }
 
 
     // verify email
@@ -112,7 +116,7 @@ public class AuthService {
     }
 
     // Step 3: Generate the Token
-    String token = jwtUtil.generateToken(user.getEmail(), user.getId());
+    String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole().toString());
 
     // Step 4: Return the response
     return new AuthResponse(
