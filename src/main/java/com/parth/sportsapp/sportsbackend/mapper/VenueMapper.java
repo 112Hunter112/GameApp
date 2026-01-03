@@ -27,6 +27,11 @@ public class VenueMapper {
    * Convert VenueRequest to Venue entity (for CREATE)
    */
   public Venue toEntity(VenueRequest request, User owner) {
+
+    if (request == null) {
+      return null;
+    }
+
     Venue venue = new Venue();
 
     // Basic fields
