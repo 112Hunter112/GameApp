@@ -36,7 +36,7 @@ public class Courts {
 
   private Integer capacity;
 
-  @ElementCollection
+  @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "court_amenities", joinColumns = @JoinColumn(name = "court_id"))
   @Column(name = "amenity")
   private List<String> amenities;

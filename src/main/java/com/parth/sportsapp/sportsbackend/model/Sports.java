@@ -28,7 +28,6 @@ public class Sports {
   @Column(name = "icon_url")
   private String iconURL;
 
-  @Lob
   @Column(columnDefinition = "TEXT")
   private String description;
 
