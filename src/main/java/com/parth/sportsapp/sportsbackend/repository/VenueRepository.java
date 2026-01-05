@@ -57,5 +57,9 @@ List<Venue> findByAddressContainingIgnoreCase(String address);
   // inside VenueRepository interface
   boolean existsByNameIgnoreCaseAndAddressIgnoreCase(String name, String address);
 
+  // src/main/java/com/parth/sportsapp/sportsbackend/repository/VenueRepository.java
+
+  @Query("SELECT DISTINCT v FROM Venue v JOIN v.courts c JOIN c.sports s WHERE LOWER(s.sportName) LIKE LOWER(CONCAT('%', :sportName, '%'))")
+  List<Venue> findBySportName(@Param("sportName") String sportName);
 
 }

@@ -193,6 +193,28 @@ public class CourtService {
 //    return conflicts == 0;
 //  }
 
+  // src/main/java/com/parth/sportsapp/sportsbackend/service/CourtService.java
+
+  public List<CourtResponse> getCourtsByVenue(UUID venueId, UUID prioritySportId) {
+    // 1. Fetch all courts for the venue
+    List<Courts> courts = courtRepository.findByVenue_Id(venueId);
+
+    // 2. If a preference exists, SORT the list (Priority Sport First)
+    if (prioritySportId != null) {
+      courts.sort((c1, c2) -> {
+        boolean c1Matches = c1.getSports().getId().equals(prioritySportId);
+        boolean c2Matches = c2.getSports().getId().equals(prioritySportId);
+
+        // Boolean.compare(true, false) returns 1 (sorting it to the bottom)
+        // We want true FIRST, so we compare (c2, c1) or reverse the result
+        return Boolean.compare(c2Matches, c1Matches);
+      });
+    }
+
+    return courts.stream()
+        .map(courtMapper::toResponse)
+        .collect(Collectors.toList());
+  }
 
 
 
@@ -210,5 +232,6 @@ public class CourtService {
       throw new IllegalArgumentException("Court number is required");
     }
   }
+
 
 }

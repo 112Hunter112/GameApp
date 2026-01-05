@@ -123,4 +123,12 @@ public class VenueController {
     return ResponseEntity.ok(venues);
   }
 
+
+  // src/main/java/com/parth/sportsapp/sportsbackend/controller/VenueController.java
+
+  @GetMapping("/search") // GET /api/venues/search?sport=tennis
+  public ResponseEntity<List<VenueResponse>> searchVenues(@RequestParam(required = false) String sport) {
+    return ResponseEntity.ok(venueService.searchVenues(sport));
+  }
+
 }

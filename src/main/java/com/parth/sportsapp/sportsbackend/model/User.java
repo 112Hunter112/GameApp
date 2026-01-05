@@ -75,6 +75,13 @@ public class User {
   @OneToMany(mappedBy = "user")
   private List<Participants> participationHistory;
 
+
+  @OneToMany(mappedBy = "requester", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+  private List<Friendship> sentRequests;
+
+  @OneToMany(mappedBy = "receiver", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+  private List<Friendship> receivedRequests;
+
   /**
    * These are all the getters and setters
    * @return the value they are assigned or set those values in db.
@@ -179,6 +186,22 @@ public class User {
 
   public void setParticipationHistory(List<Participants> participationHistory) {
     this.participationHistory = participationHistory;
+  }
+
+  public List<Friendship> getSentRequests() {
+    return sentRequests;
+  }
+
+  public void setSentRequests(List<Friendship> sentRequests) {
+    this.sentRequests = sentRequests;
+  }
+
+  public List<Friendship> getReceivedRequests() {
+    return receivedRequests;
+  }
+
+  public void setReceivedRequests(List<Friendship> receivedRequests) {
+    this.receivedRequests = receivedRequests;
   }
 
   //  default constructor

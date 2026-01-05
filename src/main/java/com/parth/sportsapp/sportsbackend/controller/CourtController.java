@@ -79,19 +79,15 @@ public class CourtController {
     return ResponseEntity.ok(courtService.getVendorCourts(vendorId));
   }
 
-  // GET /api/venues/{venueId}/courts?sportId=...
+  // src/main/java/com/parth/sportsapp/sportsbackend/controller/CourtController.java
+
+  // GET /api/venues/{venueId}/courts?priority_sport_id=...
   @GetMapping("/venues/{venueId}/courts")
   public ResponseEntity<List<CourtResponse>> getCourtsByVenue(
       @PathVariable UUID venueId,
-      @RequestParam(required = false) UUID sportId) { // Optional!
+      @RequestParam(name = "priority_sport_id", required = false) UUID prioritySportId) {
 
-    if (sportId != null) {
-      // If user specifically asked for "Tennis" at this venue
-      return ResponseEntity.ok(courtService.getCourtsByVenueAndSport(venueId, sportId));
-    } else {
-      // Otherwise, show everything (Basketball + Tennis)
-      return ResponseEntity.ok(courtService.getCourtsByVenue(venueId));
-    }
+    return ResponseEntity.ok(courtService.getCourtsByVenue(venueId, prioritySportId));
   }
 
   @GetMapping("/courts/{courtId}")
@@ -122,5 +118,7 @@ public class CourtController {
     String userIdString = jwtUtil.extractUserId(jwtToken);
     return UUID.fromString(userIdString);
   }
+
+
 
 }

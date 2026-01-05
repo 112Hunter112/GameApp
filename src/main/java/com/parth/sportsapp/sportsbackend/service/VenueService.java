@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Pageable; // <--- ADD THIS
 
 
@@ -265,6 +267,18 @@ private UserRepository userRepository;
       );
     }
     return radiusKm;
+  }
+
+  // src/main/java/com/parth/sportsapp/sportsbackend/service/VenueService.java
+
+  public List<VenueResponse> searchVenues(String sportName) {
+    List<Venue> venues;
+    if (sportName == null || sportName.isBlank()) {
+      venues = venueRepository.findAll(); // Or findByIsActiveTrue()
+    } else {
+      venues = venueRepository.findBySportName(sportName);
+    }
+    return venues.stream().map(venueMapper::toResponse).collect(Collectors.toList());
   }
 
 
