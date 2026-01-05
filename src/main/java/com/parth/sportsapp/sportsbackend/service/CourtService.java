@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -52,6 +54,8 @@ public class CourtService {
     Sports sport = sportsRepository.findById(request.getSportId())
         .orElseThrow(() -> new RuntimeException("Sport not found"));
 
+    validateCourtData(request);
+
     // 4. Convert Request -> Entity (Prepare for DB)
     // The mapper puts the relationships (venue/sport) into the court
     Courts courtEntity = courtMapper.toEntity(request, venue, sport);
@@ -77,6 +81,8 @@ public class CourtService {
       throw new RuntimeException("ACCESS DENIED: You do not own this court");
     }
 
+    validateCourtData(request);
+
     // Update fields (We usually don't allow changing Sport or Venue on update)
     court.setCourtNumber(request.getCourtNumber());
     court.setHourlyRate(request.getHourlyRate());
@@ -96,10 +102,12 @@ public class CourtService {
         .orElseThrow(() -> new RuntimeException("Court not found"));
 
     if (!court.getVenue().getOwner().getId().equals(vendorId)) {
-      throw new RuntimeException("ACCESS DENIED: You do not own this court");
+      throw new RuntimeException("ACCESS DENIED");
     }
 
-    courtRepository.delete(court);
+    // Soft delete - just mark as inactive
+    court.setActive(false);
+    courtRepository.save(court);
   }
 
 
@@ -121,6 +129,77 @@ public class CourtService {
     Courts court = courtRepository.findById(courtId)
         .orElseThrow(() -> new RuntimeException("Court not found"));
     return courtMapper.toResponse(court);
+  }
+
+  /**
+   * Get all courts owned by vendor (across all their venues)
+   */
+  @Transactional(readOnly = true)
+  public List<CourtResponse> getVendorCourts(UUID vendorId) {
+    // Get all vendor's venues
+    List<Venue> venues = venueRepository.findByOwner_Id(vendorId);
+
+    // Get venue IDs
+    List<UUID> venueIds = venues.stream()
+        .map(Venue::getId)
+        .collect(Collectors.toList());
+
+    // Get all courts for these venues
+    List<Courts> courts = courtRepository.findByVenue_IdIn(venueIds);
+
+    // Convert to DTOs
+    return courts.stream()
+        .map(courtMapper::toResponse)
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Get all courts for a specific sport
+   */
+  @Transactional(readOnly = true)
+  public List<CourtResponse> getCourtsBySport(UUID sportId) {
+    List<Courts> courts = courtRepository.findBySport_Id(sportId);
+    return courts.stream()
+        .map(courtMapper::toResponse)
+        .collect(Collectors.toList());
+  }
+
+
+//  /**
+//   * Check if court is available at given time
+//   */
+//  @Transactional(readOnly = true)
+//  public boolean isCourtAvailable(UUID courtId, LocalDateTime startTime, LocalDateTime endTime) {
+//    // Check if court exists and is active
+//    Courts court = courtRepository.findById(courtId)
+//        .orElseThrow(() -> new RuntimeException("Court not found"));
+//
+//    if (!court.isActive()) {
+//      return false;
+//    }
+//
+//    // Check for conflicting bookings
+//    Long conflicts = bookingRepository.countConflictingBookings(courtId, startTime, endTime);
+//
+//    return conflicts == 0;
+//  }
+
+
+
+
+
+  private void validateCourtData(CourtRequest request) {
+    if (request.getHourlyRate() != null && request.getHourlyRate().compareTo(BigDecimal.ZERO) < 0) {
+      throw new IllegalArgumentException("Hourly rate cannot be negative");
+    }
+
+    if (request.getCapacity() != null && request.getCapacity() < 1) {
+      throw new IllegalArgumentException("Capacity must be at least 1");
+    }
+
+    if (request.getCourtNumber() == null || request.getCourtNumber().trim().isEmpty()) {
+      throw new IllegalArgumentException("Court number is required");
+    }
   }
 
 }

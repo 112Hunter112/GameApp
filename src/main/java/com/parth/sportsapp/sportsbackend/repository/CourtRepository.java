@@ -34,6 +34,12 @@ public interface CourtRepository extends JpaRepository<Courts, UUID> {
 
   List<Courts> findBySurfaceTypeIgnoreCase(String surfaceType);
 
+  List<Courts> findByVenue_IdIn(List<UUID> venueIds);
+
+  List<Courts> findBySport_Id(UUID sportId);
+
+
+
   // ----- count of all the items
 
   // tells users how many courts there are for the specific sport
