@@ -126,8 +126,9 @@ public class VenueController {
 
   // src/main/java/com/parth/sportsapp/sportsbackend/controller/VenueController.java
 
-  @GetMapping("/search") // GET /api/venues/search?sport=tennis
-  public ResponseEntity<List<VenueResponse>> searchVenues(@RequestParam(required = false) String sport) {
+  // We add 'params = "sport"' so this method ONLY runs when "sport" is in the URL
+  @GetMapping(value = "/search", params = "sport")
+  public ResponseEntity<List<VenueResponse>> searchVenues(@RequestParam String sport) {
     return ResponseEntity.ok(venueService.searchVenues(sport));
   }
 

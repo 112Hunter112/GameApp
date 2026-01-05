@@ -162,7 +162,7 @@ public class CourtService {
    */
   @Transactional(readOnly = true)
   public List<CourtResponse> getCourtsBySport(UUID sportId) {
-    List<Courts> courts = courtRepository.findBySport_Id(sportId);
+    List<Courts> courts = courtRepository.findBySports_Id(sportId);
     return courts.stream()
         .map(courtMapper::toResponse)
         .collect(Collectors.toList());

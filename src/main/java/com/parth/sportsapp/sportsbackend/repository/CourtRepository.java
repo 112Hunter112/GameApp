@@ -36,7 +36,7 @@ public interface CourtRepository extends JpaRepository<Courts, UUID> {
 
   List<Courts> findByVenue_IdIn(List<UUID> venueIds);
 
-  List<Courts> findBySport_Id(UUID sportId);
+  List<Courts> findBySports_Id(UUID sportId);
 
 
 
