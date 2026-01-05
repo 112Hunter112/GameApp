@@ -135,3 +135,35 @@ Open your terminal in the project root:
 ```
 
 ```
+
+## 🐳 Docker Setup (For New Developers)
+
+If you don't want to install Java/Maven locally, you can run the entire backend + database inside Docker.
+
+### 1. Prerequisites
+* **Docker Desktop:** Download and install it [here](https://www.docker.com/products/docker-desktop/).
+* **Git:** To clone the repo.
+
+### 2. Secrets Setup (Crucial!)
+Since `application-secrets.properties` is ignored by Git for security, you must create it manually.
+1. Navigate to `src/main/resources/`.
+2. Create a file named `application-secrets.properties`.
+3. Paste the following (ask the Lead Dev for real values):
+
+```properties
+# Email Config (Gmail App Password)
+spring.mail.username=your-email@gmail.com
+spring.mail.password=your-app-password
+
+# JWT Secret (Must be 32+ chars)
+jwt.secret=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+
+
+# Builds the JAR inside Docker and starts App + DB
+docker-compose up --build
+
+Command,Description
+docker-compose up,Starts existing containers (Fast).
+docker-compose up --build,Recompiles code and starts containers (Run this if you changed Java code).
+docker-compose down,Stops and removes containers.
+docker-compose down -v,WARNING: Deletes the database data volume (Resets DB).
