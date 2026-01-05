@@ -110,27 +110,6 @@ public class CourtService {
     courtRepository.save(court);
   }
 
-
-
-  //  GET ALL COURTS FOR A VENUE (Public - Users need this!)
-  public List<CourtResponse> getCourtsByVenue(UUID venueId) {
-    List<Courts> courts = courtRepository.findByVenue_Id(venueId);
-
-    // Convert List<Entity> -> List<DTO>
-    return courts.stream()
-        .map(court -> courtMapper.toResponse(court))
-        .collect(Collectors.toList());
-  }
-
-
-
-  //  GET SINGLE COURT (Public)
-  public CourtResponse getCourtById(UUID courtId) {
-    Courts court = courtRepository.findById(courtId)
-        .orElseThrow(() -> new RuntimeException("Court not found"));
-    return courtMapper.toResponse(court);
-  }
-
   /**
    * Get all courts owned by vendor (across all their venues)
    */
@@ -153,6 +132,31 @@ public class CourtService {
         .collect(Collectors.toList());
   }
 
+  // ----------------------USER---------------------
+
+
+
+  //  GET ALL COURTS FOR A VENUE (Public - Users need this!)
+  public List<CourtResponse> getCourtsByVenue(UUID venueId) {
+    List<Courts> courts = courtRepository.findByVenue_Id(venueId);
+
+    // Convert List<Entity> -> List<DTO>
+    return courts.stream()
+        .map(court -> courtMapper.toResponse(court))
+        .collect(Collectors.toList());
+  }
+
+
+
+  //  GET SINGLE COURT (Public)
+  public CourtResponse getCourtById(UUID courtId) {
+    Courts court = courtRepository.findById(courtId)
+        .orElseThrow(() -> new RuntimeException("Court not found"));
+    return courtMapper.toResponse(court);
+  }
+
+
+
   /**
    * Get all courts for a specific sport
    */
@@ -162,6 +166,11 @@ public class CourtService {
     return courts.stream()
         .map(courtMapper::toResponse)
         .collect(Collectors.toList());
+  }
+
+  public List<CourtResponse> getCourtsByVenueAndSport(UUID venueId, UUID sportId) {
+    List<Courts> courts = courtRepository.findByVenue_IdAndSports_Id(venueId, sportId);
+    return courts.stream().map(courtMapper::toResponse).collect(Collectors.toList());
   }
 
 
