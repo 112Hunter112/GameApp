@@ -132,4 +132,13 @@ public class VenueController {
     return ResponseEntity.ok(venueService.searchVenues(sport));
   }
 
+//  @GetMapping("/nearby")
+//  public List<VenueDto> searchNearby(
+//      @RequestParam double lat,
+//      @RequestParam double lng,
+//      @RequestParam(defaultValue = "10") double radiusKm) {
+//
+//    // Call Service -> Repository
+//    return venueService.findNearby(lat, lng, radiusKm);
+//  }
 }
