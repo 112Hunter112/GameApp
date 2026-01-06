@@ -1,5 +1,6 @@
 package com.parth.sportsapp.sportsbackend.service;
 
+import com.parth.sportsapp.sportsbackend.dto.FriendshipRequest;
 import com.parth.sportsapp.sportsbackend.dto.FriendshipResponse;
 import com.parth.sportsapp.sportsbackend.dto.UserSummaryDto;
 import com.parth.sportsapp.sportsbackend.mapper.FriendshipMapper;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -36,44 +38,46 @@ public class FriendshipService {
   /**
    * Sends a friend request.
    * @param requesterId - The ID of the person currently logged in (From JWT)
-   * @param receiverId - The ID of the person they want to friend (From DTO)
+   * @param requestDto - The ID of the person they want to friend (From DTO)
    */
-  public FriendshipResponse friendRequest(UUID requesterId, UUID receiverId) {
+  public FriendshipResponse friendRequest(UUID requesterId, FriendshipRequest requestDto) {
+
+    // 1. EXTRACT receiverId FIRST (This was the missing step!)
+    UUID receiverId = requestDto.getReceiverId();
 
     if (requesterId.equals(receiverId)) {
       throw new RuntimeException("You cannot send a friend request to yourself.");
     }
 
-    //1. Check if these people are connected beforehand
+    // 2. Check if connection exists
     boolean exists = friendshipRepository.existsFriendshipBetween(requesterId, receiverId);
     if (exists) {
       throw new RuntimeException("Friendship or pending request already exists.");
     }
 
-    //2. Check if blocked
-    // 2. Check Blocking (Both directions)
-    // Check if I blocked them OR if they blocked me
+    // 3. Check Blocking
     if (friendshipRepository.isBlocked(requesterId, receiverId) ||
         friendshipRepository.isBlocked(receiverId, requesterId)) {
       throw new RuntimeException("Cannot send request: You are blocked or have blocked this user.");
     }
 
-
-    // 3. Fetch Entities
+    // 4. Fetch Entities
     User requester = userRepository.findById(requesterId)
         .orElseThrow(() -> new RuntimeException("Requester not found"));
     User receiver = userRepository.findById(receiverId)
         .orElseThrow(() -> new RuntimeException("Receiver not found"));
 
-    // 4. Create & Save
+    // 5. Create & Save
     Friendship friendship = new Friendship();
     friendship.setRequester(requester);
     friendship.setReceiver(receiver);
     friendship.setStatus(FriendshipStatus.PENDING);
 
+    // 6. Set the Message (from the DTO)
+    friendship.setMessage(requestDto.getMessage());
+
     Friendship savedFriendship = friendshipRepository.save(friendship);
 
-    // 5. Return clean DTO
     return friendshipMapper.toResponse(savedFriendship);
   }
 
@@ -260,5 +264,77 @@ public class FriendshipService {
     friendshipRepository.delete(friendship);
   }
 
+  /**
+   * 1. Profile Stat: "Total Friends"
+   * Uses: countAcceptedFriends
+   */
+  public long getFriendCount(UUID userId) {
+    return friendshipRepository.countAcceptedFriends(userId);
+  }
+
+  /**
+   * 2. Security Check: "Are we friends?"
+   * Uses: areFriends
+   * Useful for permission checks (e.g., "Only friends can see my phone number")
+   */
+  public boolean checkIsFriend(UUID myId, UUID otherId) {
+    return friendshipRepository.areFriends(myId, otherId);
+  }
+
+  /**
+   * 3. The "Inbox": View all requests waiting for ME to accept.
+   * Uses: findPendingRequests
+   */
+  public List<FriendshipResponse> getReceivedRequests(UUID userId) {
+    // 1. Fetch the entities using your specific query
+    List<Friendship> received = friendshipRepository.findPendingRequests(userId);
+
+    // 2. Convert to DTOs so the frontend can display the Requester's name/face
+    return received.stream()
+        .map(friendshipMapper::toResponse)
+        .collect(Collectors.toList());
+  }
+
+
+  // In FriendshipService.java
+
+  /**
+   * Accept multiple requests at once.
+   * Useful for a "Select All -> Accept" button in the UI.
+   */
+  @Transactional
+  public List<FriendshipResponse> acceptMultipleRequests(List<UUID> requestIds, UUID currentUserId) {
+
+    // 1. Fetch all requested rows in one query
+    List<Friendship> requests = friendshipRepository.findAllById(requestIds);
+
+    if (requests.size() != requestIds.size()) {
+      // Optional: Warn if some IDs were not found, or just process the ones that were found.
+    }
+
+    // 2. Iterate and Validate
+    for (Friendship request : requests) {
+      // Security Check: Ensure the current user is the RECEIVER for ALL of them
+      if (!request.getReceiver().getId().equals(currentUserId)) {
+        throw new RuntimeException("Unauthorized: You are not the receiver for request ID: " + request.getId());
+      }
+
+      // Logic Check: Ensure they are actually PENDING
+      if (request.getStatus() != FriendshipStatus.PENDING) {
+        throw new RuntimeException("Request " + request.getId() + " is not PENDING.");
+      }
+
+      // Update Status
+      request.setStatus(FriendshipStatus.ACCEPTED);
+    }
+
+    // 3. Batch Save (Very efficient)
+    List<Friendship> savedFriendships = friendshipRepository.saveAll(requests);
+
+    // 4. Convert to DTOs
+    return savedFriendships.stream()
+        .map(friendshipMapper::toResponse)
+        .collect(Collectors.toList());
+  }
 
 }

@@ -44,6 +44,8 @@ public class Friendship {
     this.createdAt = LocalDateTime.now(); // Auto-set time
   }
 
+  @Column(length = 500)
+  private String message;
   // --- GETTERS & SETTERS ---
 
   public UUID getId() {
@@ -84,5 +86,13 @@ public class Friendship {
 
   public void setCreatedAt(LocalDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public String getMessage() {
+    return message;
+  }
+
+  public void setMessage(String message) {
+    this.message = message;
   }
 }
