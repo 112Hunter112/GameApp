@@ -9,7 +9,8 @@ import java.util.UUID;
 @Table(
     name = "friendships",
     uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"requester_id", "receiver_id"})
+        @UniqueConstraint(columnNames = {"requester_id", "receiver_id"}) // makes both these
+        // variables me unique
     }
 )
 public class Friendship {

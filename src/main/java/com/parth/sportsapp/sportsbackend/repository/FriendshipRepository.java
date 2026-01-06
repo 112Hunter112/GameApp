@@ -18,7 +18,7 @@ import java.util.UUID;
 @Repository
 public interface FriendshipRepository extends JpaRepository<Friendship, UUID> {
 
-  //count total number of repositories
+  //count total number of FRIENDS
 @Query("SELECT COUNT(f) FROM Friendship f where " +
     "(f.requester.id = :userId OR f.receiver.id = :userId)" +
     "AND f.status = 'ACCEPTED'")
@@ -31,7 +31,7 @@ public interface FriendshipRepository extends JpaRepository<Friendship, UUID> {
   boolean areFriends(@Param("myId") UUID myId, @Param("otherId") UUID otherId);
 
 
-  // Standard JPA is enough here (no @Query needed), but here is the @Query version for learning:
+
   @Query("SELECT f FROM Friendship f WHERE f.receiver.id = :userId AND f.status = 'PENDING'")
   List<Friendship> findPendingRequests(@Param("userId") UUID userId);
 
