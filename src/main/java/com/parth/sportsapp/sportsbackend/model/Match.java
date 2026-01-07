@@ -1,5 +1,7 @@
 package com.parth.sportsapp.sportsbackend.model;
 
+import com.parth.sportsapp.sportsbackend.model.MatchSource;
+import com.parth.sportsapp.sportsbackend.model.MatchVerificationStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
@@ -14,65 +16,77 @@ public class Match {
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
-  /**
-   * The physical reservation this match is tied to.
-   * This is the 'Owning' side of the One-to-One relationship.
-   */
+
   @OneToOne
-  @JoinColumn(name = "booking_id", nullable = false, unique = true)
+  @JoinColumn(name = "booking_id", nullable = true)
   private Booking booking;
 
-  /**
-   * The user who created the match (The Host).
-   */
   @ManyToOne
   @JoinColumn(name = "created_by_user_id", nullable = false)
   private User createdByUser;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "source")
+  private MatchSource source = MatchSource.APP_BOOKING;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "verification_status")
+  private MatchVerificationStatus verificationStatus = MatchVerificationStatus.CONFIRMED;
+  // Default to CONFIRMED for App Bookings, change to PENDING for Manual
+
+  // --------------------------------------------------------
+  // 3. NEW: Flexible Score (Strings allow "6-4, 6-4" or "2-1")
+  // --------------------------------------------------------
+  @Column(name = "score_summary")
+  private String score; // e.g., "6-4, 6-3"
+
+  @ManyToOne
+  @JoinColumn(name = "winner_id")
+  private User winner; // Explicitly track the winner for stats
+
   @Column(name = "match_date", nullable = false)
   private LocalDateTime matchDate;
+
+  // --- EXISTING FIELDS (Keep these for your "Lobby/LFG" features) ---
 
   @Column(name = "is_private")
   private boolean isPrivate = false;
 
-  @Column(name = "skill_requirement")
-  private String skillRequirement; // e.g., BEGINNER, INTERMEDIATE, PRO
+  @Column(name = "status", nullable = false)
+  private String status = "OPEN"; // OPEN/FULL (Lobby Status)
 
-  @Column(name = "current_players")
-  private Integer currentPlayers = 1; // Starts with the host
-
-  @Column(name = "max_players")
-  private Integer maxPlayers;
-
-  // Status: OPEN, FULL, COMPLETED, CANCELLED
-  @Column(nullable = false)
-  private String status = "OPEN";
-
-  @Column(name = "chat_room_id")
-  private String chatRoomId; // Connection to your Go chat service
-
-  @Column(columnDefinition = "TEXT")
-  private String description;
+  @OneToMany(mappedBy = "match", cascade = CascadeType.ALL) // Cascade allows saving participants with match
+  private List<Participants> participants;
 
   @CreationTimestamp
   @Column(name = "created_at", updatable = false)
   private LocalDateTime createdAt;
 
-  @OneToMany(mappedBy = "match")
-  private List<Participants> participants;
+  @Column(columnDefinition = "TEXT")
+  private String description;
 
-  @OneToOne(mappedBy = "match", cascade = CascadeType.ALL)
-  private MatchResults result;
+  // --- CONSTRUCTORS, GETTERS & SETTERS ---
 
-  // --- Constructors ---
   public Match() {}
 
-  // --- Getters and Setters ---
+  // Getters/Setters...
   public UUID getId() { return id; }
   public void setId(UUID id) { this.id = id; }
 
   public Booking getBooking() { return booking; }
   public void setBooking(Booking booking) { this.booking = booking; }
+
+  public MatchSource getSource() { return source; }
+  public void setSource(MatchSource source) { this.source = source; }
+
+  public MatchVerificationStatus getVerificationStatus() { return verificationStatus; }
+  public void setVerificationStatus(MatchVerificationStatus verificationStatus) { this.verificationStatus = verificationStatus; }
+
+  public String getScore() { return score; }
+  public void setScore(String score) { this.score = score; }
+
+  public User getWinner() { return winner; }
+  public void setWinner(User winner) { this.winner = winner; }
 
   public User getCreatedByUser() { return createdByUser; }
   public void setCreatedByUser(User createdByUser) { this.createdByUser = createdByUser; }
@@ -80,43 +94,33 @@ public class Match {
   public LocalDateTime getMatchDate() { return matchDate; }
   public void setMatchDate(LocalDateTime matchDate) { this.matchDate = matchDate; }
 
-  public boolean isPrivate() { return isPrivate; }
-  public void setPrivate(boolean aPrivate) { isPrivate = aPrivate; }
-
-  public String getSkillRequirement() { return skillRequirement; }
-  public void setSkillRequirement(String skillRequirement) { this.skillRequirement = skillRequirement; }
-
-  public Integer getCurrentPlayers() { return currentPlayers; }
-  public void setCurrentPlayers(Integer currentPlayers) { this.currentPlayers = currentPlayers; }
-
-  public Integer getMaxPlayers() { return maxPlayers; }
-  public void setMaxPlayers(Integer maxPlayers) { this.maxPlayers = maxPlayers; }
+  public List<Participants> getParticipants() { return participants; }
+  public void setParticipants(List<Participants> participants) { this.participants = participants; }
 
   public String getStatus() { return status; }
   public void setStatus(String status) { this.status = status; }
 
-  public String getChatRoomId() { return chatRoomId; }
-  public void setChatRoomId(String chatRoomId) { this.chatRoomId = chatRoomId; }
-
-  public String getDescription() { return description; }
-  public void setDescription(String description) { this.description = description; }
-
-  public LocalDateTime getCreatedAt() { return createdAt; }
-  public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-  public List<Participants> getParticipants() {
-    return participants;
+  public boolean isPrivate() {
+    return isPrivate;
   }
 
-  public void setParticipants(List<Participants> participants) {
-    this.participants = participants;
+  public void setPrivate(boolean aPrivate) {
+    isPrivate = aPrivate;
   }
 
-  public MatchResults getResult() {
-    return result;
+  public LocalDateTime getCreatedAt() {
+    return createdAt;
   }
 
-  public void setResult(MatchResults result) {
-    this.result = result;
+  public void setCreatedAt(LocalDateTime createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
   }
 }
