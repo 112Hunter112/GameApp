@@ -137,3 +137,4 @@ This document explains the responsibility of each class and interface in the app
   * **Setup:** Activates the Swagger UI at `http://localhost:8080/swagger-ui/index.html`.
   * **Security Scheme:** Tells Swagger that this API uses **Bearer Token (JWT)** authentication.
   * **Authorization:** Adds the green **"Authorize"** button to the UI, allowing you to paste your JWT once and use it for all requests (simulating a logged-in user).
+  * **This is it
