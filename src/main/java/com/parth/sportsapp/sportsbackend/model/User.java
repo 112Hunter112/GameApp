@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -60,7 +63,7 @@ public class User {
   private LocalDateTime verificationTokenExpiry;  // ← NEW: Token expires after 24 hours
 
   @OneToMany(mappedBy = "user")
-  private List<UserPreference> preferences;
+  private List<UserPreference> preferences = new ArrayList<>();
 
 
   @OneToMany(mappedBy = "user")
@@ -81,6 +84,36 @@ public class User {
 
   @OneToMany(mappedBy = "receiver", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
   private List<Friendship> receivedRequests;
+
+  @Column(length = 500)
+  private String bio; // "I love tennis and play on weekends!"
+
+  private String profilePictureUrl; // Store the S3 or Cloudinary URL here
+
+  @Enumerated(EnumType.STRING)
+  private Gender gender; // Create an Enum: MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY
+
+  private LocalDate dateOfBirth; // Better than storing "int age" because age changes every year
+
+  private String expoPushToken; // The ID of their phone (for React Native notifications)
+
+  @Column(nullable = false)
+  private boolean emailNotificationsEnabled = true;
+
+  @Column(nullable = false)
+  private boolean pushNotificationsEnabled = true;
+
+  // 1. Existing mapping (Keep this)
+  // Maps to: private User createdByUser; in Match.java
+  @OneToMany(mappedBy = "createdByUser", fetch = FetchType.LAZY)
+  private List<Match> createdMatches = new ArrayList<>();
+
+  // 2. NEW MAPPING (The one you need for the new field)
+  // Maps to: private User winner; in Match.java
+  @OneToMany(mappedBy = "winner", fetch = FetchType.LAZY)
+  private List<Match> wonMatches = new ArrayList<>();
+
+
 
   /**
    * These are all the getters and setters
@@ -202,6 +235,78 @@ public class User {
 
   public void setReceivedRequests(List<Friendship> receivedRequests) {
     this.receivedRequests = receivedRequests;
+  }
+
+  public String getBio() {
+    return bio;
+  }
+
+  public void setBio(String bio) {
+    this.bio = bio;
+  }
+
+  public String getProfilePictureUrl() {
+    return profilePictureUrl;
+  }
+
+  public void setProfilePictureUrl(String profilePictureUrl) {
+    this.profilePictureUrl = profilePictureUrl;
+  }
+
+  public Gender getGender() {
+    return gender;
+  }
+
+  public void setGender(Gender gender) {
+    this.gender = gender;
+  }
+
+  public LocalDate getDateOfBirth() {
+    return dateOfBirth;
+  }
+
+  public void setDateOfBirth(LocalDate dateOfBirth) {
+    this.dateOfBirth = dateOfBirth;
+  }
+
+  public String getExpoPushToken() {
+    return expoPushToken;
+  }
+
+  public void setExpoPushToken(String expoPushToken) {
+    this.expoPushToken = expoPushToken;
+  }
+
+  public boolean isEmailNotificationsEnabled() {
+    return emailNotificationsEnabled;
+  }
+
+  public void setEmailNotificationsEnabled(boolean emailNotificationsEnabled) {
+    this.emailNotificationsEnabled = emailNotificationsEnabled;
+  }
+
+  public boolean isPushNotificationsEnabled() {
+    return pushNotificationsEnabled;
+  }
+
+  public void setPushNotificationsEnabled(boolean pushNotificationsEnabled) {
+    this.pushNotificationsEnabled = pushNotificationsEnabled;
+  }
+
+  public List<Match> getCreatedMatches() {
+    return createdMatches;
+  }
+
+  public void setCreatedMatches(List<Match> createdMatches) {
+    this.createdMatches = createdMatches;
+  }
+
+  public List<Match> getWonMatches() {
+    return wonMatches;
+  }
+
+  public void setWonMatches(List<Match> wonMatches) {
+    this.wonMatches = wonMatches;
   }
 
   //  default constructor

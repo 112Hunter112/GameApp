@@ -19,15 +19,15 @@ public class Match {
 
   @OneToOne
   @JoinColumn(name = "booking_id", nullable = true)
-  private Booking booking;
+  private Booking booking; // was this a booking via the app or not, thus it can be NULL
 
   @ManyToOne
   @JoinColumn(name = "created_by_user_id", nullable = false)
-  private User createdByUser;
+  private User createdByUser; // who created this match
 
   @Enumerated(EnumType.STRING)
   @Column(name = "source")
-  private MatchSource source = MatchSource.APP_BOOKING;
+  private MatchSource source = MatchSource.APP_BOOKING; // how was this match history entered?
 
   @Enumerated(EnumType.STRING)
   @Column(name = "verification_status")
@@ -64,6 +64,18 @@ public class Match {
 
   @Column(columnDefinition = "TEXT")
   private String description;
+
+  // --- EXTERNAL OPPONENT FIELDS ---
+  // Used ONLY if the opponent is not on the app
+
+  @Column(name = "external_opponent_email")
+  private String externalOpponentEmail;
+
+  @Column(name = "external_opponent_name")
+  private String externalOpponentName;
+
+  @Column(name = "external_verification_token")
+  private String externalVerificationToken; // The magic code in the email link
 
   // --- CONSTRUCTORS, GETTERS & SETTERS ---
 
@@ -122,5 +134,29 @@ public class Match {
 
   public void setDescription(String description) {
     this.description = description;
+  }
+
+  public String getExternalOpponentEmail() {
+    return externalOpponentEmail;
+  }
+
+  public void setExternalOpponentEmail(String externalOpponentEmail) {
+    this.externalOpponentEmail = externalOpponentEmail;
+  }
+
+  public String getExternalOpponentName() {
+    return externalOpponentName;
+  }
+
+  public void setExternalOpponentName(String externalOpponentName) {
+    this.externalOpponentName = externalOpponentName;
+  }
+
+  public String getExternalVerificationToken() {
+    return externalVerificationToken;
+  }
+
+  public void setExternalVerificationToken(String externalVerificationToken) {
+    this.externalVerificationToken = externalVerificationToken;
   }
 }
