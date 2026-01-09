@@ -28,8 +28,10 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
   List<Match> findBySource(MatchSource source);
 
   //Verification status
-  // "Find all matches that are currently PENDING"
+  // "Find all the status of each event
   List<Match> findByVerificationStatus(MatchVerificationStatus status);
+
+  //Find all Matches that are PENDING and have the email of the new joining User
 
 
   // "Find manual entries created by me that are still pending"
@@ -64,9 +66,11 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
   List<Match> findPendingVerifications(@Param("userId") UUID userId);
 
   // Upcoming Schedule
+  // todo change all list to pageable
   List<Match> findByParticipants_User_IdAndMatchDateAfterOrderByMatchDateAsc(UUID userId, LocalDateTime now);
 
   // Past History
+  // todo change all list to pageable
   List<Match> findByParticipants_User_IdAndMatchDateBeforeOrderByMatchDateDesc(UUID userId, LocalDateTime now);
 
   // My Full History (Paginated & Ordered)
@@ -79,14 +83,7 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
   @Query("SELECT m FROM Match m JOIN m.participants p WHERE p.user.id = :userId AND m.matchDate > CURRENT_TIMESTAMP ORDER BY m.matchDate ASC")
   List<Match> findUpcomingMatches(@Param("userId") UUID userId);
 
-  //  Action Items (Matches I need to verify)
-  @Query("SELECT m FROM Match m JOIN m.participants p " +
-      "WHERE p.user.id = :userId " +
-      "AND m.verificationStatus = 'PENDING' " +
-      "AND m.createdByUser.id != :userId")
-  List<Match> findMatchesToVerify(@Param("userId") UUID userId);
-
-  // Head-to-Head (Rivalry)
+  // Head-to-Head (Rivalry), shows list of people who you went up against
   @Query("SELECT m FROM Match m JOIN m.participants p1 JOIN m.participants p2 " +
       "WHERE p1.user.id = :user1Id AND p2.user.id = :user2Id " +
       "ORDER BY m.matchDate DESC")
@@ -200,10 +197,6 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
       @Param("since") LocalDateTime since,
       Pageable pageable);
 
-
-  @Query("SELECT m FROM Match m JOIN m.booking b JOIN b.court c " +
-      "WHERE c.venue.id = :venueId AND c.sport = :sport")
-  List<Match> findByVenueAndSport(@Param("venueId") UUID venueId, @Param("sport") String sport);
 
   // Find matches where the opponent hasn't joined yet
   List<Match> findByExternalOpponentEmail(String email);
