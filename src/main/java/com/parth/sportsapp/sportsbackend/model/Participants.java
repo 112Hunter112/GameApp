@@ -19,10 +19,14 @@ public class Participants {
   @JoinColumn(name = "user_id")
   private User user;
 
-  private String status; // e.g., REQUESTED, ACCEPTED, REJECTED
+  @Enumerated(EnumType.STRING)
+  private ParticipationStatus status;// e.g., REQUESTED, ACCEPTED, REJECTED
 
   @Column(name = "is_host")
   private boolean isHost = false;
+
+  @Column(name = "team_name")
+  private String teamName; // "HOME", "AWAY" or "TEAM_A", "TEAM_B"
 
   public Participants() {}
 
@@ -36,9 +40,22 @@ public class Participants {
   public User getUser() { return user; }
   public void setUser(User user) { this.user = user; }
 
-  public String getStatus() { return status; }
-  public void setStatus(String status) { this.status = status; }
+  public ParticipationStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(ParticipationStatus status) {
+    this.status = status;
+  }
 
   public boolean isHost() { return isHost; }
   public void setHost(boolean host) { isHost = host; }
+
+  public String getTeamName() {
+    return teamName;
+  }
+
+  public void setTeamName(String teamName) {
+    this.teamName = teamName;
+  }
 }

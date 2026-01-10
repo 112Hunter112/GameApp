@@ -40,9 +40,6 @@ public class Match {
   @Column(name = "score_summary")
   private String score; // e.g., "6-4, 6-3"
 
-  @ManyToOne
-  @JoinColumn(name = "winner_id")
-  private User winner; // Explicitly track the winner for stats
 
   @Column(name = "match_date", nullable = false)
   private LocalDateTime matchDate;
@@ -77,7 +74,18 @@ public class Match {
   @Column(name = "external_verification_token")
   private String externalVerificationToken; // The magic code in the email link
 
+  @Column(name = "winning_team")
+  private String winningTeam; // "TEAM_A" or "TEAM_B" (or "DRAW")
+
+  @ManyToOne
+  @JoinColumn(name = "sport_id", nullable = false)
+  private Sports sport; // e.g., "TENNIS", "SOCCER", "PADEL"
+
   // --- CONSTRUCTORS, GETTERS & SETTERS ---
+
+  // Update Getters/Setters
+  public String getWinningTeam() { return winningTeam; }
+  public void setWinningTeam(String winningTeam) { this.winningTeam = winningTeam; }
 
   public Match() {}
 
@@ -97,8 +105,6 @@ public class Match {
   public String getScore() { return score; }
   public void setScore(String score) { this.score = score; }
 
-  public User getWinner() { return winner; }
-  public void setWinner(User winner) { this.winner = winner; }
 
   public User getCreatedByUser() { return createdByUser; }
   public void setCreatedByUser(User createdByUser) { this.createdByUser = createdByUser; }
@@ -158,5 +164,13 @@ public class Match {
 
   public void setExternalVerificationToken(String externalVerificationToken) {
     this.externalVerificationToken = externalVerificationToken;
+  }
+
+  public Sports getSport() {
+    return sport;
+  }
+
+  public void setSport(Sports sport) {
+    this.sport = sport;
   }
 }

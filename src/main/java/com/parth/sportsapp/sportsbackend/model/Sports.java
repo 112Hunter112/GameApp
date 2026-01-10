@@ -40,6 +40,14 @@ public class Sports {
   @OneToMany(mappedBy = "sports")
   private List<Courts> courts;
 
+  @Enumerated(EnumType.STRING) // Stores "SETS" or "POINTS" in the database
+  @Column(name = "scoring_type", nullable = false)
+  private ScoringType scoringType;
+
+
+
+
+  // -----------SETTERS and GETTERS
   public UUID getId() {
     return id;
   }
@@ -110,5 +118,13 @@ public class Sports {
 
   public void setCourts(List<Courts> courts) {
     this.courts = courts;
+  }
+
+  public ScoringType getScoringType() {
+    return scoringType;
+  }
+
+  public void setScoringType(ScoringType scoringType) {
+    this.scoringType = scoringType;
   }
 }

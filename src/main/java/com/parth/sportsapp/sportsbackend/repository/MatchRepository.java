@@ -49,8 +49,6 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
   //matches made by user
   List<Match> findByCreatedByUser(User user);
 
-  //list of matches in which the user was involved
-  Page<Match> findByParticipants_User(User user, Pageable pageable);
 
   //"Pending Invites" - Matches where I am invited but haven't accepted
   // (You'll need to pass "PENDING" as the status)
@@ -95,7 +93,10 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
 
   // Count losses (all matches where user participated but didn't win)
   @Query("SELECT COUNT(m) FROM Match m JOIN m.participants p " +
-      "WHERE p.user.id = :userId AND (m.winner IS NULL OR m.winner.id != :userId)")
+      "WHERE p.user.id = :userId " +
+      "AND m.winningTeam IS NOT NULL " +
+      "AND m.winningTeam != 'DRAW' " +
+      "AND m.winningTeam != p.teamName")
   long countLosses(@Param("userId") UUID userId);
 
   // Matches this month
@@ -111,20 +112,13 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
   // Wins this month
   @Query("SELECT COUNT(m) FROM Match m JOIN m.participants p " +
       "WHERE p.user.id = :userId " +
-      "AND m.winner.id = :userId " +
+      "AND m.winningTeam = p.teamName " +
       "AND m.matchDate >= :startOfMonth " +
       "AND m.matchDate < :endOfMonth")
   long countWinsThisMonth(@Param("userId") UUID userId,
       @Param("startOfMonth") LocalDateTime startOfMonth,
       @Param("endOfMonth") LocalDateTime endOfMonth);
 
-  // Find completed matches without scores
-  @Query("SELECT m FROM Match m JOIN m.participants p " +
-      "WHERE p.user.id = :userId " +
-      "AND m.matchDate < CURRENT_TIMESTAMP " +
-      "AND (m.score IS NULL OR m.winner IS NULL) " +
-      "ORDER BY m.matchDate DESC")
-  List<Match> findMatchesWithoutResults(@Param("userId") UUID userId);
 
   // Find all opponents (users who appear in matches with me)
   @Query("SELECT p2.user, COUNT(m) as matchCount FROM Match m " +
@@ -172,7 +166,7 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
   // Get last N matches to calculate streak in service layer
   @Query("SELECT m FROM Match m JOIN m.participants p " +
       "WHERE p.user.id = :userId " +
-      "AND m.winner IS NOT NULL " +
+      "AND m.winningTeam IS NOT NULL " +
       "ORDER BY m.matchDate DESC")
   List<Match> findRecentMatchesForStreak(@Param("userId") UUID userId, Pageable pageable);
   // Get last 20, then calculate streak in service
@@ -200,4 +194,15 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
 
   // Find matches where the opponent hasn't joined yet
   List<Match> findByExternalOpponentEmail(String email);
+
+  // Count Total Wins (Lifetime)
+  @Query("SELECT COUNT(m) FROM Match m JOIN m.participants p " +
+      "WHERE p.user.id = :userId " +
+      "AND m.winningTeam = p.teamName")
+  long countTotalWins(@Param("userId") UUID userId);
+
+
+  @Query("SELECT m FROM Match m JOIN m.participants p WHERE p.user.id = :userId AND (m.score IS NULL OR m.score = '') AND m.matchDate < CURRENT_TIMESTAMP")
+  List<Match> findMatchesWithoutResults(@Param("userId") UUID userId);
+
 }

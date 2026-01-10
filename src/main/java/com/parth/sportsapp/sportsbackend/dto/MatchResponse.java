@@ -33,8 +33,17 @@ public class MatchResponse {
   // If participants list is empty (external user), show this name instead
   private String externalOpponentName;
 
+  private String winningTeam;
+
+
+
+
+
   // Getters and Setters
 
+
+  public String getWinningTeam() { return winningTeam; }
+  public void setWinningTeam(String winningTeam) { this.winningTeam = winningTeam; }
 
   public UUID getId() {
     return id;

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -14,6 +15,11 @@ public class EmailService {
 
   @Autowired
   private JavaMailSender mailSender;
+
+  // Ideally, inject your frontend URL from application.properties
+  // @Value("${app.frontend.url}")
+  // private String frontendUrl;
+  private final String frontendUrl = "http://localhost:3000";
 
   public void sendMailWithAttachment(String to, String subject, String verificationLink) {
 
@@ -39,5 +45,52 @@ public class EmailService {
       throw new RuntimeException("Failed to send email", e);
     }
 
+  }
+
+  /**
+   * Sends an Invite to an external user to join the app
+   * Used by MatchService when a user logs a game against a non-user.
+   */
+  @Async
+  public void sendInvite(String toEmail, String inviterName) {
+    String subject = inviterName + " challenged you on DuoSport!";
+
+    // You can make this HTML prettier later
+    String htmlContent = "<div style='font-family: Arial, sans-serif;'>"
+        + "<h2>Game Result Logged! 🎾⚽</h2>"
+        + "<p>Hi there,</p>"
+        + "<p><strong>" + inviterName + "</strong> has logged a match result against you on DuoSport.</p>"
+        + "<p>They claimed they won! 👀</p>"
+        + "<p>To confirm (or dispute) this score and track your own stats, create your free account:</p>"
+        + "<br>"
+        + "<a href=\"" + frontendUrl + "/register?email=" + toEmail + "\" "
+        + "style='background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>"
+        + "View Match & Sign Up</a>"
+        + "<br><br>"
+        + "<p>See you on the court,<br>The DuoSport Team</p>"
+        + "</div>";
+
+    sendHtmlEmail(toEmail, subject, htmlContent);
+  }
+
+  /**
+   * Generic Helper to send HTML emails
+   */
+  private void sendHtmlEmail(String to, String subject, String htmlContent) {
+    try {
+      MimeMessage message = mailSender.createMimeMessage();
+      // 'true' indicates multipart message (needed for HTML)
+      MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+      helper.setTo(to);
+      helper.setSubject(subject);
+      helper.setText(htmlContent, true); // true = isHtml
+
+      mailSender.send(message);
+
+    } catch (MessagingException e) {
+      // In production, log this error instead of crashing
+      throw new RuntimeException("Failed to send email to " + to, e);
+    }
   }
 }

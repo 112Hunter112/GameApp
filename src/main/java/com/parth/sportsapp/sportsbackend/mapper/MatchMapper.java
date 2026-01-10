@@ -36,9 +36,7 @@ public class MatchMapper {
       response.setCreatedBy(toUserSummary(match.getCreatedByUser()));
     }
 
-    if (match.getWinner() != null) {
-      response.setWinner(toUserSummary(match.getWinner()));
-    }
+    response.setWinningTeam(match.getWinningTeam());
 
     // 3. Map Linked Booking ID
     if (match.getBooking() != null) {
@@ -70,7 +68,7 @@ public class MatchMapper {
     }
 
     dto.setHost(participant.isHost());
-    dto.setStatus(participant.getStatus());
+    dto.setStatus(participant.getStatus().name());
 
     return dto;
   }
