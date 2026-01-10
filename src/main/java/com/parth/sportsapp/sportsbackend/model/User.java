@@ -108,10 +108,7 @@ public class User {
   @OneToMany(mappedBy = "createdByUser", fetch = FetchType.LAZY)
   private List<Match> createdMatches = new ArrayList<>();
 
-  // 2. NEW MAPPING (The one you need for the new field)
-  // Maps to: private User winner; in Match.java
-  @OneToMany(mappedBy = "winner", fetch = FetchType.LAZY)
-  private List<Match> wonMatches = new ArrayList<>();
+
 
 
 
@@ -301,13 +298,7 @@ public class User {
     this.createdMatches = createdMatches;
   }
 
-  public List<Match> getWonMatches() {
-    return wonMatches;
-  }
 
-  public void setWonMatches(List<Match> wonMatches) {
-    this.wonMatches = wonMatches;
-  }
 
   //  default constructor
   public User() {

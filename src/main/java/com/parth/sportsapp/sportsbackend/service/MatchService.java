@@ -128,23 +128,32 @@ public class MatchService {
     if (manualMatchRequest.getOpponentEmails() != null) {
       for (String email : manualMatchRequest.getOpponentEmails()) {
 
-        // Check if this email actually belongs to a real user
-        User existingUser = userRepository.findByEmail(email).orElse(null);
+        // Check if user exists, otherwise create a "Shadow User"
+        User participantUser = userRepository.findByEmail(email).orElse(null);
 
-        if (existingUser != null) {
-          // Treat them like a normal opponent
-          addParticipant(savedMatch, existingUser, false, ParticipationStatus.PENDING, "TEAM_B");
-          notificationService.sendMatchInvite(existingUser, creator, savedMatch.getId());
-        } else {
+        if (participantUser == null) {
+          // Create Shadow User so we can add them to Participants table
+          participantUser = new User();
+          participantUser.setEmail(email);
+          participantUser.setFirstName("Invited");
+          participantUser.setLastName("Player");
+          // Fill mandatory fields with random data to pass @NotBlank validation
+          participantUser.setPassword(UUID.randomUUID().toString());
+          participantUser.setPhoneNumber("INVITE-" + UUID.randomUUID().toString());
+          participantUser.setRole(UserRole.USER);
+          participantUser.setVerified(false);
+
+          participantUser = userRepository.save(participantUser); // Save to DB
+
           // Send Email Invite 📧
           emailService.sendInvite(email, creator.getFirstName());
-
-          // Save metadata so we show "Vs mike@gmail.com" instead of "Vs Unknown"
-          if (savedMatch.getExternalOpponentEmail() == null) {
-            savedMatch.setExternalOpponentEmail(email);
-            matchRepository.save(savedMatch);
-          }
+        } else {
+          // Only send in-app notification if they already exist
+          notificationService.sendMatchInvite(participantUser, creator, savedMatch.getId());
         }
+
+        // Add to Match (Now safe for multiple emails!)
+        addParticipant(savedMatch, participantUser, false, ParticipationStatus.PENDING, "TEAM_B");
       }
     }
 
@@ -174,7 +183,7 @@ public class MatchService {
 
   public UserStatsDto getOverallStats(UUID userId) {
     long totalMatches = matchRepository.countTotalMatches(userId);
-    long wins = countUserWins(userId);
+    long wins = matchRepository.countTotalWins(userId);
     long losses = totalMatches - wins;
     double winRate = totalMatches > 0 ? (wins * 100.0 / totalMatches) : 0.0;
 
@@ -186,17 +195,7 @@ public class MatchService {
     );
   }
 
-  private long countUserWins(UUID userId) {
-    // Unpaged fetch to filter in memory - fine for MVP, optimize with JPQL later if slow
-    List<Match> allMatches = matchRepository.findRecentMatches(
-        userId,
-        Pageable.unpaged()
-    );
 
-    return allMatches.stream()
-        .filter(match -> isUserOnWinningTeam(userId, match))
-        .count();
-  }
 
   private boolean isUserOnWinningTeam(UUID userId, Match match) {
     if (match.getWinningTeam() == null) return false;
@@ -327,20 +326,43 @@ public class MatchService {
     Match match = matchRepository.findById(matchId)
         .orElseThrow(() -> new RuntimeException("Match not found"));
 
-    boolean isParticipant = match.getParticipants().stream()
-        .anyMatch(p -> p.getUser().getId().equals(userId));
+    // 1. Find the Verifier (The user trying to click the button)
+    Participants verifier = match.getParticipants().stream()
+        .filter(p -> p.getUser().getId().equals(userId))
+        .findFirst()
+        .orElseThrow(() -> new RuntimeException("You are not a participant in this match"));
 
-    if (!isParticipant) throw new RuntimeException("Not a participant");
-    if (match.getCreatedByUser().getId().equals(userId)) throw new RuntimeException("Cannot verify own match");
+    // 2. Find the Creator (The one who logged the match)
+    Participants creator = match.getParticipants().stream()
+        .filter(p -> p.getUser().getId().equals(match.getCreatedByUser().getId()))
+        .findFirst()
+        .orElseThrow(() -> new RuntimeException("Creator not found in participants"));
 
+    // 3. SECURITY CHECK: Prevent Creator from verifying
+    if (match.getCreatedByUser().getId().equals(userId)) {
+      throw new RuntimeException("You cannot verify your own match submission");
+    }
+
+    // 4. SECURITY CHECK: Prevent Teammates from verifying [THE FIX]
+    // If Verifier is on "TEAM_A" and Creator is on "TEAM_A", block it.
+    if (verifier.getTeamName().equals(creator.getTeamName())) {
+      throw new RuntimeException("Teammates cannot verify match results. Please ask an opponent to verify.");
+    }
+
+    // 5. Process Verification
     if (approve) {
       match.setVerificationStatus(MatchVerificationStatus.CONFIRMED);
-      match.getParticipants().stream()
-          .filter(p -> p.getUser().getId().equals(userId))
-          .forEach(p -> p.setStatus(ParticipationStatus.ACCEPTED));
+
+      // Update the verifier's status to ACCEPTED
+      verifier.setStatus(ParticipationStatus.ACCEPTED);
+      participantsRepository.save(verifier);
+
+      // Notify the creator
       notificationService.sendMatchVerified(match.getCreatedByUser(), match.getId());
     } else {
       match.setVerificationStatus(MatchVerificationStatus.REJECTED);
+
+      // Notify the creator
       notificationService.sendMatchRejected(match.getCreatedByUser(), match.getId());
     }
 

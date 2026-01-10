@@ -205,22 +205,6 @@ public class MatchValidator {
 
 
 
-  /**
-   * If there's a score showing a clear winner, there should be a winner ID
-   * Example: "6-4, 6-3" clearly shows someone won
-   */
-  public void validateScoreWinnerConsistency(String score, UUID winnerId, ScoringType scoringType) {
-    if (score == null || score.isBlank()) return;
-
-    // For SET-based sports (Tennis, Volleyball)
-    if (scoringType == ScoringType.SETS) {
-      // Simple check: if score exists and isn't "0-0", winner should be set
-      if (!score.equals("0-0") && winnerId == null) {
-        // This is a WARNING, not an error - allow it but maybe log
-        // Some matches might be abandoned/retired
-      }
-    }
-  }
 
 
 }

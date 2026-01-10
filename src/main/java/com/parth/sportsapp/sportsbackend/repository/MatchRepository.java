@@ -40,11 +40,7 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
       MatchSource source,
       MatchVerificationStatus status
   );
-  //find total matches won by the user
-  List<Match> findByWinner(User winner);
 
-  // number of wins by the User
-  long countByWinner(User winner);
 
   //matches made by user
   List<Match> findByCreatedByUser(User user);
@@ -196,9 +192,10 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
   List<Match> findByExternalOpponentEmail(String email);
 
   // Count Total Wins (Lifetime)
+  // MatchRepository.java
   @Query("SELECT COUNT(m) FROM Match m JOIN m.participants p " +
       "WHERE p.user.id = :userId " +
-      "AND m.winningTeam = p.teamName")
+      "AND m.winningTeam = p.teamName") // Crucial: compare strings
   long countTotalWins(@Param("userId") UUID userId);
 
 

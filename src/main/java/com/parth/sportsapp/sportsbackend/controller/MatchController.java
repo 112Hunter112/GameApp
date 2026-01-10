@@ -1,0 +1,161 @@
+package com.parth.sportsapp.sportsbackend.controller;
+
+import com.parth.sportsapp.sportsbackend.dto.*;
+import com.parth.sportsapp.sportsbackend.model.User;
+import com.parth.sportsapp.sportsbackend.service.MatchService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/matches")
+// 🔒 GLOBAL SECURITY: Only logged-in users can access ANY match endpoint
+@PreAuthorize("isAuthenticated()")
+public class MatchController {
+
+  @Autowired
+  private MatchService matchService;
+
+  // ============================================
+  // 1. MATCH LOGGING & HISTORY
+  // ============================================
+
+  /**
+   * Log a manual match result (Tennis, Soccer, etc.)
+   */
+  @PostMapping("/manual")
+  @PreAuthorize("hasAnyRole('USER', 'ADMIN')") // Example: Restricting specific roles
+  public ResponseEntity<MatchResponse> logManualMatch(@RequestBody ManualMatchRequest request) {
+    // We get the ID from the JWT, so users can't fake being someone else
+    return ResponseEntity.ok(matchService.logManualMatch(getCurrentUserId(), request));
+  }
+
+  /**
+   * Get Match History (Paged)
+   */
+  @GetMapping
+  public ResponseEntity<Page<MatchResponse>> getMatchHistory(
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "10") int size) {
+    Pageable pageable = PageRequest.of(page, size);
+    return ResponseEntity.ok(matchService.allMatches(getCurrentUserId(), pageable));
+  }
+
+  // ============================================
+  // 2. DASHBOARD (HOME SCREEN)
+  // ============================================
+
+  @GetMapping("/upcoming")
+  public ResponseEntity<List<MatchResponse>> getUpcomingMatches() {
+    return ResponseEntity.ok(matchService.getUpcomingMatches(getCurrentUserId()));
+  }
+
+  @GetMapping("/today")
+  public ResponseEntity<List<MatchResponse>> getMatchesToday() {
+    return ResponseEntity.ok(matchService.getMatchesToday(getCurrentUserId()));
+  }
+
+  @GetMapping("/pending-verifications")
+  public ResponseEntity<List<MatchResponse>> getPendingVerifications() {
+    return ResponseEntity.ok(matchService.getPendingVerifications(getCurrentUserId()));
+  }
+
+  @GetMapping("/incomplete")
+  public ResponseEntity<List<MatchResponse>> getMatchesWithoutResults() {
+    return ResponseEntity.ok(matchService.getMatchesWithoutResults(getCurrentUserId()));
+  }
+
+  // ============================================
+  // 3. STATISTICS (PROFILE)
+  // ============================================
+
+  @GetMapping("/stats/overall")
+  public ResponseEntity<UserStatsDto> getOverallStats() {
+    return ResponseEntity.ok(matchService.getOverallStats(getCurrentUserId()));
+  }
+
+  @GetMapping("/stats/monthly")
+  public ResponseEntity<MonthlyStatsDto> getMonthlyStats() {
+    return ResponseEntity.ok(matchService.getMonthlyStats(getCurrentUserId()));
+  }
+
+  @GetMapping("/stats/streak")
+  public ResponseEntity<StreakDto> getCurrentStreak() {
+    return ResponseEntity.ok(matchService.getCurrentStreak(getCurrentUserId()));
+  }
+
+  // ============================================
+  // 4. SOCIAL & RIVALS
+  // ============================================
+
+  @GetMapping("/head-to-head/{opponentId}")
+  public ResponseEntity<HeadToHeadDto> getHeadToHead(@PathVariable UUID opponentId) {
+    return ResponseEntity.ok(matchService.getHeadToHead(getCurrentUserId(), opponentId));
+  }
+
+  @GetMapping("/opponents/most-played")
+  public ResponseEntity<List<OpponentStatsDto>> getMostPlayedOpponents(
+      @RequestParam(defaultValue = "5") int limit) {
+    return ResponseEntity.ok(matchService.getMostPlayedOpponents(getCurrentUserId(), limit));
+  }
+
+  // ============================================
+  // 5. ACTIONS (VERIFY / UPDATE)
+  // ============================================
+
+  /**
+   * Verify a match result
+   * Use query param: ?approve=true OR ?approve=false
+   */
+  @PostMapping("/{matchId}/verify")
+  public ResponseEntity<MatchResponse> verifyMatch(
+      @PathVariable UUID matchId,
+      @RequestParam boolean approve) {
+    return ResponseEntity.ok(matchService.verifyMatch(matchId, getCurrentUserId(), approve));
+  }
+
+  /**
+   * Update Score for an existing match
+   */
+  @PutMapping("/{matchId}/score")
+  public ResponseEntity<MatchResponse> updateMatchScore(
+      @PathVariable UUID matchId,
+      @RequestBody UpdateScoreRequest request) {
+    return ResponseEntity.ok(matchService.updateMatchScore(
+        matchId,
+        getCurrentUserId(),
+        request.getScore(),
+        request.getWinningTeam()
+    ));
+  }
+
+  // ============================================
+  // 🔐 HELPER: EXTRACT USER ID FROM JWT
+  // ============================================
+  private UUID getCurrentUserId() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+    if (authentication == null || !authentication.isAuthenticated()) {
+      throw new RuntimeException("User not authenticated");
+    }
+
+    Object principal = authentication.getPrincipal();
+
+    // If your User entity implements UserDetails, this cast works perfectly
+    if (principal instanceof User) {
+      return ((User) principal).getId();
+    }
+
+    // Fallback for edge cases (e.g. strict string principals)
+    throw new RuntimeException("Unable to retrieve User ID from Security Context");
+  }
+}
