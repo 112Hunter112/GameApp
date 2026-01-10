@@ -16,4 +16,8 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
 
   // Get count of unread messages (For the red badge 🔴 on the frontend)
   long countByRecipientAndIsReadFalse(User recipient);
+
+  List<Notification> findByRecipientIdOrderByCreatedAtDesc(UUID recipientId);
+
+
 }
