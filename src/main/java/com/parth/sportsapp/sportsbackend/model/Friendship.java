@@ -33,6 +33,7 @@ public class Friendship {
   private FriendshipStatus status;
 
   @Column(nullable = false, updatable = false)
+  @org.hibernate.annotations.CreationTimestamp
   private LocalDateTime createdAt;
 
   public Friendship() {} // JPA needs this

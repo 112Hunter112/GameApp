@@ -31,6 +31,13 @@ public class VenueController {
   // -----------------VENDOR-----------------
 
   //@ResponseBody // this just outputs in a json format
+
+  /**
+   * THIS WORKS
+   * @param venueRequest
+   * @param authHeader
+   * @return
+   */
   @PostMapping
   @PreAuthorize("hasRole('VENUE_OWNER')")
   public ResponseEntity<VenueResponse>  CreateVenue(@Valid @RequestBody VenueRequest venueRequest,
@@ -44,7 +51,11 @@ public class VenueController {
   }
 
 
-
+  /**
+   * This works when tested
+   * @param authHeader
+   * @return
+   */
   @GetMapping("/my-venues")
   @PreAuthorize("hasRole('VENUE_OWNER')")
   public ResponseEntity<List<VenueResponse>> getMyVenues(
@@ -78,6 +89,13 @@ public class VenueController {
     return ResponseEntity.ok(venueResponse);
   }
 
+  /**
+   * THIS WORKS
+   *
+   * @param venueId
+   * @param authHeader
+   * @return
+   */
   @DeleteMapping("/{venueId}")
   @PreAuthorize("hasRole('VENUE_OWNER')")
   public ResponseEntity<Void> deleteVenue(

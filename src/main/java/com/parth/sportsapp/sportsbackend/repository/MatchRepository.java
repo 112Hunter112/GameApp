@@ -145,9 +145,11 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
   // Today's matches
   @Query("SELECT m FROM Match m JOIN m.participants p " +
       "WHERE p.user.id = :userId " +
-      "AND DATE(m.matchDate) = CURRENT_DATE " +
+      "AND m.matchDate BETWEEN :startOfDay AND :endOfDay " +
       "ORDER BY m.matchDate ASC")
-  List<Match> findMatchesToday(@Param("userId") UUID userId);
+  List<Match> findMatchesToday(@Param("userId") UUID userId,
+      @Param("startOfDay") LocalDateTime startOfDay,
+      @Param("endOfDay") LocalDateTime endOfDay);
 
   // This week's matches
   @Query("SELECT m FROM Match m JOIN m.participants p " +
@@ -202,4 +204,7 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
   @Query("SELECT m FROM Match m JOIN m.participants p WHERE p.user.id = :userId AND (m.score IS NULL OR m.score = '') AND m.matchDate < CURRENT_TIMESTAMP")
   List<Match> findMatchesWithoutResults(@Param("userId") UUID userId);
 
+
+  @Query("SELECT DISTINCT m FROM Match m JOIN FETCH m.participants p WHERE p.user.id = :userId AND m.winningTeam IS NOT NULL ORDER BY m.matchDate DESC")
+  List<Match> findCompletedMatchesByParticipant(@Param("userId") UUID userId, Pageable pageable);
 }

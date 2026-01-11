@@ -30,6 +30,8 @@ public class CourtController {
   /**
    * When the user presses the save button when adding courts this is what will be called
    *
+   * THIS WORKS!!
+   *
    * @param courtRequest
    * @param authHeader
    * @param venueId

@@ -1,6 +1,8 @@
 package com.parth.sportsapp.sportsbackend.security;
 
 import com.parth.sportsapp.sportsbackend.service.JwtUtil;
+// 1. CHANGE THIS IMPORT to point to your custom model
+import com.parth.sportsapp.sportsbackend.model.User;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,15 +11,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
+// 2. REMOVE this import so it doesn't conflict
+// import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
+import java.util.UUID;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -31,7 +33,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     final String authHeader = request.getHeader("Authorization");
 
-    // 1. Check if token exists
     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
       filterChain.doFilter(request, response);
       return;
@@ -40,32 +41,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     try {
       final String jwt = authHeader.substring(7);
       final String userEmail = jwtUtil.extractEmail(jwt);
-      final String role = jwtUtil.extractRole(jwt); // <--- Extracts "ROLE_VENUE_OWNER"
+      final String role = jwtUtil.extractRole(jwt);
 
-      // 2. If user is present and not already authenticated
+      // 3. Extract the User ID from the token
+      final String userIdString = jwtUtil.extractUserId(jwt);
+
       if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-        // 3. Validate Token
         if (jwtUtil.validateToken(jwt, userEmail)) {
 
-          // 4. Create Authority (Role)
           SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
 
-          // 5. Create UserDetails (Spring Internal User)
-          UserDetails userDetails = new User(userEmail, "", Collections.singletonList(authority));
+          // 4. Create YOUR Custom User Object
+          User customUser = new User();
+          customUser.setId(UUID.fromString(userIdString)); // Set the ID so controller can use it
+          customUser.setEmail(userEmail);
 
-          // 6. Set Authentication
+          // Note: If your User model implements UserDetails, you might need to set password/authorities here too,
+          // but for this specific controller check, setting the ID is the most important part.
+
+          // 5. Pass 'customUser' as the Principal
           UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-              userDetails, null, userDetails.getAuthorities());
+              customUser, // <--- This is now an instance of com.parth...model.User
+              null,
+              Collections.singletonList(authority));
 
           authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-          // 7. Success! User is logged in for this request
           SecurityContextHolder.getContext().setAuthentication(authToken);
         }
       }
     } catch (Exception e) {
-      // Token invalid or expired
       System.out.println("JWT Verification Failed: " + e.getMessage());
     }
 

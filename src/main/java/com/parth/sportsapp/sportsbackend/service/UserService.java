@@ -52,4 +52,13 @@ public class UserService {
         user.getProfilePictureUrl() //
     );
   }
+
+  /**
+   * Find user ID by email (for authentication)
+   */
+  public UUID findUserIdByEmail(String email) {
+    User user = userRepository.findByEmail(email)
+        .orElseThrow(() -> new RuntimeException("User not found: " + email));
+    return user.getId();
+  }
 }

@@ -2,6 +2,7 @@ package com.parth.sportsapp.sportsbackend.controller;
 
 import com.parth.sportsapp.sportsbackend.dto.*;
 import com.parth.sportsapp.sportsbackend.model.User;
+import com.parth.sportsapp.sportsbackend.repository.UserRepository;
 import com.parth.sportsapp.sportsbackend.service.MatchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +26,9 @@ public class MatchController {
 
   @Autowired
   private MatchService matchService;
+
+  @Autowired
+  private UserRepository userRepository;
 
   // ============================================
   // 1. MATCH LOGGING & HISTORY
@@ -90,7 +95,9 @@ public class MatchController {
 
   @GetMapping("/stats/streak")
   public ResponseEntity<StreakDto> getCurrentStreak() {
-    return ResponseEntity.ok(matchService.getCurrentStreak(getCurrentUserId()));
+    Integer streakCount = matchService.getCurrentStreak();
+    // Wrap the integer into your DTO object
+    return ResponseEntity.ok(new StreakDto(streakCount.toString(), streakCount));
   }
 
   // ============================================
@@ -141,6 +148,7 @@ public class MatchController {
   // ============================================
   // 🔐 HELPER: EXTRACT USER ID FROM JWT
   // ============================================
+
   private UUID getCurrentUserId() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -150,12 +158,24 @@ public class MatchController {
 
     Object principal = authentication.getPrincipal();
 
-    // If your User entity implements UserDetails, this cast works perfectly
+    // 1. Best Case: It's already your User Entity
     if (principal instanceof User) {
       return ((User) principal).getId();
     }
 
-    // Fallback for edge cases (e.g. strict string principals)
-    throw new RuntimeException("Unable to retrieve User ID from Security Context");
+    // 2. Fallback: It's a standard UserDetails or a String (Email)
+    String email;
+    if (principal instanceof UserDetails) {
+      email = ((UserDetails) principal).getUsername();
+    } else if (principal instanceof String) {
+      email = (String) principal;
+    } else {
+      throw new RuntimeException("Unknown principal type: " + principal.getClass().getName());
+    }
+
+    // 3. Database Lookup using the email
+    return userRepository.findByEmail(email)
+        .orElseThrow(() -> new RuntimeException("User not found for email: " + email))
+        .getId();
   }
 }

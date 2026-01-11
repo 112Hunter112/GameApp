@@ -199,10 +199,13 @@ public class MatchService {
 
   private boolean isUserOnWinningTeam(UUID userId, Match match) {
     if (match.getWinningTeam() == null) return false;
-    // Check if the user is in the participants list AND their teamName matches the winningTeam string
+
+    // Convert Enum to String for comparison
+    String winningTeamStr = match.getWinningTeam();
+
     return match.getParticipants().stream()
-        .anyMatch(p -> p.getUser().getId().equals(userId)
-            && p.getTeamName().equals(match.getWinningTeam()));
+        .filter(p -> p.getUser().getId().equals(userId))
+        .anyMatch(p -> p.getTeamName().equals(winningTeamStr));
   }
 
   public MonthlyStatsDto getMonthlyStats(UUID userId) {
@@ -223,29 +226,29 @@ public class MatchService {
     );
   }
 
-  public StreakDto getCurrentStreak(UUID userId) {
-    List<Match> recentMatches = matchRepository.findRecentMatchesForStreak(
-        userId,
-        PageRequest.of(0, 50)
+  @Transactional(readOnly = true)
+  public Integer getCurrentStreak() {
+    // 1. Fixed the SecurityUtils error by using standard Spring Security context
+    String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+    User currentUser = userRepository.findByEmail(email)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
+    // 2. Fetch matches
+    List<Match> userMatches = matchRepository.findCompletedMatchesByParticipant(
+        currentUser.getId(),
+        PageRequest.of(0, 100)
     );
 
-    if (recentMatches.isEmpty()) return new StreakDto("NONE", 0);
-
-    int currentStreak = 0;
-    String streakType = null;
-
-    for (Match match : recentMatches) {
-      boolean isWin = isUserOnWinningTeam(userId, match);
-      if (streakType == null) {
-        streakType = isWin ? "WIN" : "LOSS";
-        currentStreak = 1;
-      } else if ((streakType.equals("WIN") && isWin) || (streakType.equals("LOSS") && !isWin)) {
-        currentStreak++;
+    int streak = 0;
+    for (Match match : userMatches) {
+      // 3. Fixed the incompatible types error by passing match.getId() instead of the match object
+      if (isUserOnWinningTeam(currentUser.getId(), match)) {
+        streak++;
       } else {
         break;
       }
     }
-    return new StreakDto(streakType, currentStreak);
+    return streak;
   }
 
   // ============================================
@@ -259,7 +262,14 @@ public class MatchService {
   }
 
   public List<MatchResponse> getMatchesToday(UUID userId) {
-    return matchRepository.findMatchesToday(userId).stream()
+    // Calculate Start (00:00) and End (23:59) of today
+    LocalDateTime start = LocalDateTime.now().with(java.time.LocalTime.MIN);
+    LocalDateTime end = LocalDateTime.now().with(java.time.LocalTime.MAX);
+
+    // Pass them to the repository
+    List<Match> matches = matchRepository.findMatchesToday(userId, start, end);
+
+    return matches.stream()
         .map(matchMapper::toDto)
         .collect(Collectors.toList());
   }

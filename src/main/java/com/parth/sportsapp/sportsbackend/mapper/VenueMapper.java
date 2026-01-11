@@ -95,8 +95,16 @@ public class VenueMapper {
     response.setPhoneNumber(venue.getPhoneNumber());
     response.setDescription(venue.getDescription());
     response.setOpeningHours(venue.getOpeningHours());
-    response.setAmenities(venue.getAmenities());
     response.setActive(venue.isActive());
+
+    // ====================================================================
+    // FIX: Copy the list to a new ArrayList to force it to load immediately
+    // ====================================================================
+    List<String> safeAmenities = venue.getAmenities() != null
+        ? new ArrayList<>(venue.getAmenities())
+        : new ArrayList<>();
+    response.setAmenities(safeAmenities);
+    // ====================================================================
 
     // Extract coordinates from PostGIS Point
     if (venue.getLocation() != null) {
@@ -104,7 +112,7 @@ public class VenueMapper {
       response.setLongitude(venue.getLocation().getX());  // X = Longitude
     }
 
-    // Convert owner to safe DTO (NO password, NO tokens!)
+    // Convert owner to safe DTO
     if (venue.getOwner() != null) {
       User owner = venue.getOwner();
       OwnerSummaryDto ownerDto = new OwnerSummaryDto(

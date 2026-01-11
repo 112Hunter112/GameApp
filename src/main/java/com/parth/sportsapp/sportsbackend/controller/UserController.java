@@ -1,13 +1,11 @@
 package com.parth.sportsapp.sportsbackend.controller;
 
 import com.parth.sportsapp.sportsbackend.dto.UserSummaryDto;
-import com.parth.sportsapp.sportsbackend.model.User;
+import com.parth.sportsapp.sportsbackend.service.JwtUtil;
 import com.parth.sportsapp.sportsbackend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,36 +18,41 @@ public class UserController {
   @Autowired
   private UserService userService;
 
+  @Autowired
+  private JwtUtil jwtUtil;
+
   /**
-   * This is the search bar for the user where they can find other players
-   *
-   * @param query
-   * @return
+   * Search bar for finding other players
    */
   @GetMapping("/search")
   @PreAuthorize("hasAnyRole('USER', 'VENUE_OWNER')")
   public ResponseEntity<List<UserSummaryDto>> searchUsers(@RequestParam("query") String query) {
     if (query == null || query.trim().length() < 2) {
-      return ResponseEntity.ok(List.of()); // Return empty if query is too short
+      return ResponseEntity.ok(List.of());
     }
     return ResponseEntity.ok(userService.searchUsers(query));
   }
 
-
-
+  /**
+   * Get current user's profile
+   */
   @GetMapping("/me")
-  @PreAuthorize("isAuthenticated()") // <--- Allows USER, VENUE_OWNER, and ADMIN
-  public ResponseEntity<UserSummaryDto> getCurrentUserProfile() {
-    UUID userId = getCurrentUserId();
-    // You will need to add 'getUserProfile' to your UserService
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<UserSummaryDto> getCurrentUserProfile(
+      @RequestHeader("Authorization") String token) {
+
+    UUID userId = getUserIdFromToken(token);
     return ResponseEntity.ok(userService.getUserProfile(userId));
   }
 
-  private UUID getCurrentUserId() {
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    if (authentication != null && authentication.getPrincipal() instanceof User) {
-      return ((User) authentication.getPrincipal()).getId();
+  /**
+   * Extract user ID from JWT token (same pattern as your other controllers)
+   */
+  private UUID getUserIdFromToken(String token) {
+    if (token != null && token.startsWith("Bearer ")) {
+      String jwt = token.substring(7);
+      return UUID.fromString(jwtUtil.extractUserId(jwt));
     }
-    throw new RuntimeException("User not authenticated");
+    throw new RuntimeException("Invalid Token");
   }
 }
