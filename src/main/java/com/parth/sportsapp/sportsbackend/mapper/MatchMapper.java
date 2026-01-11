@@ -54,6 +54,10 @@ public class MatchMapper {
       response.setParticipants(Collections.emptyList());
     }
 
+    if (match.getSport() != null) {
+      response.setSportName(match.getSport().getSportName());
+    }
+
     return response;
   }
 
@@ -75,10 +79,17 @@ public class MatchMapper {
 
   private UserSummaryDto toUserSummary(User user) {
     UserSummaryDto dto = new UserSummaryDto();
+
+    // Existing mappings
     dto.setId(user.getId());
     dto.setFirstName(user.getFirstName());
     dto.setLastName(user.getLastName());
     dto.setEmail(user.getEmail());
+
+    // --- ADD THESE TWO LINES ---
+    dto.setBio(user.getBio());
+    dto.setProfilePictureUrl(user.getProfilePictureUrl());
+
     return dto;
   }
 }

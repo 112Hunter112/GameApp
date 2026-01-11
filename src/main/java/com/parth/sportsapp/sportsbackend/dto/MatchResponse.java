@@ -35,7 +35,7 @@ public class MatchResponse {
 
   private String winningTeam;
 
-
+  private String sportName;
 
 
 
@@ -131,5 +131,13 @@ public class MatchResponse {
 
   public void setExternalOpponentName(String externalOpponentName) {
     this.externalOpponentName = externalOpponentName;
+  }
+
+  public String getSportName() {
+    return sportName;
+  }
+
+  public void setSportName(String sportName) {
+    this.sportName = sportName;
   }
 }
