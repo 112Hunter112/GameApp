@@ -1,169 +1,169 @@
-```markdown
-# 🏟️ SportsApp Backend
+# SportsApp Backend Service
 
-A robust backend service for a sports venue booking application. Built with **Spring Boot** and **PostgreSQL**, designed to serve a React Native mobile frontend.
+## Overview
 
-> **Created by:** Parth Aditya
+The SportsApp Backend is a robust, scalable RESTful API designed to facilitate sports venue booking and management. Built on the Spring Boot framework and backed by PostgreSQL, this service handles user authentication, venue data management, and booking transactions. The architecture is currently evolving to include high-performance microservices using Go and Redis to ensure scalability under heavy load.
 
----
+## Technology Stack
 
-## 🛠️ Tech Stack
+### Core Frameworks
 
-* **Language:** Java 17+
-* **Framework:** Spring Boot 3.x
-* **Database:** PostgreSQL
-* **Security:** Spring Security & JWT (JSON Web Tokens)
-* **Build Tool:** Maven
-* **Tools:** Docker, Postman, IntelliJ IDEA
+- **Language:** Java 17+ (Core API), Go (High-Performance Edge Services)
+- **Framework:** Spring Boot 3.x
+- **Build Tool:** Maven
 
----
+### Data & Security
 
-## 📐 Architecture & Flow
+- **Database:** PostgreSQL
+- **Caching & State:** Redis (Planned for Rate Limiting & Session Caching)
+- **Security:** Spring Security, BCrypt, JWT (JSON Web Tokens)
+- **ORM:** Hibernate / Spring Data JPA
 
-The application follows a standard **Controller-Service-Repository** architecture.
+### Infrastructure & Performance
 
-```mermaid
-graph LR
-    A[Mobile App\nReact Native] -->|HTTP Request| B[Spring Boot API]
-    B -->|JSON Response| A
-    B -->|Query/Save| C[PostgreSQL\nDatabase]
+- **Containerization:** Docker & Docker Compose
+- **Traffic Control:** Custom Distributed Rate Limiter (Go implementation)
+- **API Testing:** Postman
+- **Documentation:** Swagger UI
+
+## System Architecture
+
+The application adheres to a strict Controller-Service-Repository layered architecture, with an upcoming Rate Limiting Layer to protect API resources.
 
 ```
+graph LR
+    A[Mobile Client] -->|HTTP/REST| G[Go Rate Limiter]
+    G -->|Allowed Request| B[Spring Boot API]
+    B -->|JSON Response| A
+    B -->|JPA/Hibernate| C[PostgreSQL Database]
+    G -.->|Token Bucket Check| R[Redis Cache]
+```
 
-### Authentication Logic (The "Brain")
+## Authentication Flow
 
-The `AuthService` orchestrates the security flow:
+The security module is managed by the AuthService, implementing the following lifecycle:
 
-1. **Validate:** Checks if Email/Phone already exists in DB.
-2. **Secure:** Hashes passwords using `BCryptPasswordEncoder`.
-3. **Store:** Saves the `User` entity to PostgreSQL.
-4. **Tokenize:** Generates a **JWT** via `JwtUtil`.
-5. **Response:** Returns the Token + User Profile to the frontend.
+1. **Validation:** Verifies uniqueness of credentials (Email/Phone).
+2. **Encryption:** Hashes sensitive data using BCryptPasswordEncoder.
+3. **Persistence:** Transactional storage of User entities.
+4. **Token Generation:** Issuance of secure JWTs via JwtUtil.
+5. **Response:** Returns authorized session tokens to the client.
 
----
+## Configuration & Environment Variables
 
-## 🚀 Getting Started
+### Secrets Management
 
-### Prerequisites
+For security compliance, sensitive configuration files are excluded from version control. A local configuration file must be created before the application can start.
 
-* Java 17 or higher
-* PostgreSQL installed and running
-* Maven
-
-### 1. Database Setup
-
-Ensure your `application.properties` matches your local PostgreSQL credentials:
+1. Navigate to the resources directory: `src/main/resources/`
+2. Create a file named: `application-secrets.properties`
+3. Populate the file with the following keys (obtain values from the repository administrator):
 
 ```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/sports_db
-spring.datasource.username=your_username
-spring.datasource.password=your_password
+# Email Configuration (SMTP)
+spring.mail.username=admin@example.com
+spring.mail.password=secure-app-password
 
+# JWT Configuration (Min 32 characters)
+jwt.secret=YOUR_SECURE_256_BIT_SECRET_KEY
+
+# Redis Configuration (Upcoming)
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
 ```
 
-### 2. Run the Backend
+## Installation & Deployment
 
-Open your terminal in the project root:
+### Method 1: Containerized Deployment (Docker)
+
+This is the recommended method for development to ensure environment consistency across Java, Go, and database services.
+
+**Prerequisites:** Docker Desktop installed and running.
+
+**Build and Start:**
 
 ```bash
-# Using Maven Wrapper (Windows)
+docker-compose up --build
+```
+
+This command compiles the code, builds the JAR/Go binaries, and starts Application, Redis, and Database containers.
+
+#### Docker Command Reference:
+
+| Command | Description |
+|---------|-------------|
+| `docker-compose up` | Starts existing containers. Use for quick startup. |
+| `docker-compose up --build` | Recompiles source code and rebuilds containers. |
+| `docker-compose down` | Stops and removes containers. |
+| `docker-compose down -v` | Stops containers and deletes the database volume (Resets Data). |
+
+### Method 2: Local Deployment (Maven)
+
+Suitable for native debugging without Docker.
+
+**Prerequisites:** Java 17+, PostgreSQL, and Redis installed locally.
+
+**Configure Database:**
+
+Update `src/main/resources/application.properties` with your local credentials.
+
+**Execute Run Command:**
+
+```bash
+# Windows
 .\mvnw spring-boot:run
 
-# Using Maven Wrapper (Mac/Linux)
+# Mac/Linux
 ./mvnw spring-boot:run
-
 ```
 
-* **Server runs on:** `http://localhost:8080`
-* **Swagger UI:** `http://localhost:8080/swagger-ui/index.html` (Once dependency is added)
+## API Reference
 
-### 3. Run the Frontend (Planned)
+### Authentication Module
 
-* *Note: Frontend is currently in development.*
-* **Standard Command:** `npm start` inside the mobile app folder.
-* **Emulator Config:** Android Emulator uses `10.0.2.2` to access localhost.
+**Base Path:** `/auth`
 
----
+| HTTP Method | Endpoint | Description |
+|-------------|----------|-------------|
+| POST | `/register` | Register a new Player account. |
+| POST | `/login` | Authenticate user and retrieve JWT. |
+| POST | `/register/vendor` | Register a new Venue Owner account. |
 
-## 🔌 API Endpoints
+### Venue Management
 
-### Authentication (`/auth`)
+**Base Path:** `/api/venues`
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `POST` | `/auth/register` | Register a new user (Player). |
-| `POST` | `/auth/login` | Login and receive JWT. |
-| `POST` | `/auth/register/vendor` | (Future) Register a venue owner. |
+| HTTP Method | Endpoint | Description |
+|-------------|----------|-------------|
+| GET | `/` | Retrieve a paginated list of all venues. |
+| POST | `/` | Create a new venue record (Vendor Role required). |
 
-### Venues (`/api/venues`) - *Coming Soon*
+## Development Roadmap
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/venues` | List all available sports venues. |
-| `POST` | `/venues` | Add a new venue (Vendor only). |
+### Phase 1: Core Backend Foundation
 
----
+- [x] Implementation of Spring Boot & PostgreSQL connectivity.
+- [x] User Entity modeling and Repository layer creation.
+- [x] Security configuration and JWT utility implementation.
+- [x] Development of Authentication Service logic.
 
-## 📅 Development Roadmap & Status
+### Phase 2: Venue Management System
 
-### Phase 1: Backend Core (In Progress) 🚧
+- [ ] Venue Entity modeling.
+- [ ] Implementation of Venue CRUD operations.
+- [ ] Booking transaction logic.
 
-* [x] Set up Spring Boot & PostgreSQL connection
-* [x] Create User Entity & Repository
-* [x] Implement JWT Utility & Security Config
-* [x] Build Auth Service (Register/Login logic)
-* [ ] Build Authentication Controller
-* [ ] Test with Postman
+### Phase 3: Performance & Scalability (Immediate Priority)
 
-### Phase 2: Venue Management (Next)
+- [ ] Integration of Redis for caching session data and token blocklisting.
+- [ ] Development of a Go (Golang) microservice for high-throughput request handling.
+- [ ] Implementation of a distributed Rate Limiter middleware to prevent API abuse.
 
-* [ ] Create Venue Entity
-* [ ] Build Venue CRUD APIs
+### Phase 4: Client Integration
 
-### Phase 3: Frontend (Future)
+- [ ] React Native environment initialization.
+- [ ] Axios service layer configuration for API integration.
 
-* [ ] Initialize React Native project
-* [ ] Connect Axios to Backend APIs
+## License
 
----
-
-### 📝 Developer Log
-
-* **17/12/25:** Set up JWT, DTOs, and Service layer. Validated password hashing flow.
-* **Next:** Setting up Controllers to expose the API.
-
-```
-
-```
-
-## 🐳 Docker Setup (For New Developers)
-
-If you don't want to install Java/Maven locally, you can run the entire backend + database inside Docker.
-
-### 1. Prerequisites
-* **Docker Desktop:** Download and install it [here](https://www.docker.com/products/docker-desktop/).
-* **Git:** To clone the repo.
-
-### 2. Secrets Setup (Crucial!)
-Since `application-secrets.properties` is ignored by Git for security, you must create it manually.
-1. Navigate to `src/main/resources/`.
-2. Create a file named `application-secrets.properties`.
-3. Paste the following (ask the Lead Dev for real values):
-
-```properties
-# Email Config (Gmail App Password)
-spring.mail.username=your-email@gmail.com
-spring.mail.password=your-app-password
-
-# JWT Secret (Must be 32+ chars)
-jwt.secret=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-
-
-# Builds the JAR inside Docker and starts App + DB
-docker-compose up --build
-
-Command,Description
-docker-compose up,Starts existing containers (Fast).
-docker-compose up --build,Recompiles code and starts containers (Run this if you changed Java code).
-docker-compose down,Stops and removes containers.
-docker-compose down -v,WARNING: Deletes the database data volume (Resets DB).
+Copyright © 2025 SportsApp Inc. All Rights Reserved.

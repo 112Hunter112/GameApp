@@ -10,16 +10,20 @@ public class UserSummaryDto {
   private String firstName;
   private String lastName;
   private String email;
+  private String bio;
+  private String profilePictureUrl;
   // private String avatarUrl; (Add this later if you have images)
 
 public UserSummaryDto() {}
 
   // Constructors, Getters & Setters
-  public UserSummaryDto(UUID id, String firstName, String lastName, String email) {
+  public UserSummaryDto(UUID id, String firstName, String lastName, String email, String bio, String profilePictureUrl) {
     this.id = id;
     this.firstName = firstName;
     this.lastName = lastName;
     this.email = email;
+    this.bio = bio;
+    this.profilePictureUrl = profilePictureUrl;
   }
 
   // ... generate getters ...
@@ -54,5 +58,21 @@ public UserSummaryDto() {}
 
   public void setEmail(String email) {
     this.email = email;
+  }
+
+  public String getBio() {
+    return bio;
+  }
+
+  public void setBio(String bio) {
+    this.bio = bio;
+  }
+
+  public String getProfilePictureUrl() {
+    return profilePictureUrl;
+  }
+
+  public void setProfilePictureUrl(String profilePictureUrl) {
+    this.profilePictureUrl = profilePictureUrl;
   }
 }
