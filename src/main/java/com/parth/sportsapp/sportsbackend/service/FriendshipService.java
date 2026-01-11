@@ -226,8 +226,14 @@ public class FriendshipService {
    * (Since we reuse this logic 4 times above)
    */
   private UserSummaryDto convertToUserSummary(User user) {
-    return new UserSummaryDto(user.getId(), user.getFirstName(), user.getLastName(),
-        user.getEmail());
+    return new UserSummaryDto(
+    user.getId(), 
+    user.getFirstName(), 
+    user.getLastName(), 
+    user.getEmail(),
+    user.getBio(),             // Added
+    user.getProfilePictureUrl() // Added
+);
   }
 
   // ==========================================
