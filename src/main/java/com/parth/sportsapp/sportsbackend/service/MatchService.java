@@ -48,6 +48,7 @@ public class MatchService {
    * @param pageable
    * @return
    */
+  @Transactional(readOnly = true)
   public Page<MatchResponse> allMatches(UUID userID, Pageable pageable) {
 
     Page<Match> matchPage = matchRepository.findHistory(userID, pageable);
