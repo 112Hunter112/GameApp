@@ -3,6 +3,7 @@ package com.parth.sportsapp.sportsbackend.controller;
 import com.parth.sportsapp.sportsbackend.dto.UserSummaryDto;
 import com.parth.sportsapp.sportsbackend.service.JwtUtil;
 import com.parth.sportsapp.sportsbackend.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,6 +36,8 @@ public class UserController {
 
   /**
    * Get current user's profile
+   *
+   * THIS WORKS
    */
   @GetMapping("/me")
   @PreAuthorize("isAuthenticated()")
@@ -55,4 +58,10 @@ public class UserController {
     }
     throw new RuntimeException("Invalid Token");
   }
+
+
+//  @PutMapping("/me") // <--- This is the part that completes the URL
+//  public ResponseEntity<UserResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+//    return ResponseEntity.ok(userService.updateProfile(request));
+//  }
 }

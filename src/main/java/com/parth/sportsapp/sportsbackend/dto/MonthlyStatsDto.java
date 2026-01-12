@@ -1,5 +1,6 @@
 package com.parth.sportsapp.sportsbackend.dto;
 
+
 public class MonthlyStatsDto {
   private long totalMatches;
   private long wins;
@@ -17,4 +18,10 @@ public class MonthlyStatsDto {
   }
 
   // Getters and setters
+  // Add these at the bottom of the class
+  public long getTotalMatches() { return totalMatches; }
+  public long getWins() { return wins; }
+  public long getLosses() { return losses; }
+  public double getWinRate() { return winRate; }
+  public String getMonth() { return month; }
 }

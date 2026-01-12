@@ -180,7 +180,12 @@ public class MatchService {
     participantsRepository.save(p);
   }
 
-
+  /**
+   * THIS WORKS
+   *
+   * @param userId
+   * @return
+   */
   public UserStatsDto getOverallStats(UUID userId) {
     long totalMatches = matchRepository.countTotalMatches(userId);
     long wins = matchRepository.countTotalWins(userId);
@@ -196,11 +201,17 @@ public class MatchService {
   }
 
 
-
+  /**
+   * This returns if you won or lost by checking which team you were on and comparing to the list
+   * of members on the winning team
+   *
+   * @param userId
+   * @param match
+   * @return
+   */
   private boolean isUserOnWinningTeam(UUID userId, Match match) {
     if (match.getWinningTeam() == null) return false;
 
-    // Convert Enum to String for comparison
     String winningTeamStr = match.getWinningTeam();
 
     return match.getParticipants().stream()
@@ -208,13 +219,17 @@ public class MatchService {
         .anyMatch(p -> p.getTeamName().equals(winningTeamStr));
   }
 
+  @Transactional(readOnly = true)
   public MonthlyStatsDto getMonthlyStats(UUID userId) {
     LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS);
     LocalDateTime endOfMonth = startOfMonth.plusMonths(1);
 
     List<Match> monthMatches = matchRepository.findMatchesThisMonth(userId, startOfMonth, endOfMonth);
 
+    // todo : This is the issue in the  code
+    // this finds how many wins th user has
     long wins = monthMatches.stream().filter(m -> isUserOnWinningTeam(userId, m)).count();
+
     long totalMatches = monthMatches.size();
     long losses = totalMatches - wins;
     double winRate = totalMatches > 0 ? (wins * 100.0 / totalMatches) : 0.0;
@@ -227,22 +242,19 @@ public class MatchService {
   }
 
   @Transactional(readOnly = true)
-  public Integer getCurrentStreak() {
-    // 1. Fixed the SecurityUtils error by using standard Spring Security context
-    String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-    User currentUser = userRepository.findByEmail(email)
-        .orElseThrow(() -> new RuntimeException("User not found"));
+  public Integer getCurrentStreak(UUID userId) { // <--- Changed signature to accept ID
+    // 1. Logic removed: No more SecurityContext lookup here.
 
-    // 2. Fetch matches
+    // 2. Fetch matches using the passed ID directly
     List<Match> userMatches = matchRepository.findCompletedMatchesByParticipant(
-        currentUser.getId(),
+        userId,
         PageRequest.of(0, 100)
     );
 
     int streak = 0;
     for (Match match : userMatches) {
-      // 3. Fixed the incompatible types error by passing match.getId() instead of the match object
-      if (isUserOnWinningTeam(currentUser.getId(), match)) {
+      // Pass the userId parameter
+      if (isUserOnWinningTeam(userId, match)) {
         streak++;
       } else {
         break;
@@ -289,7 +301,7 @@ public class MatchService {
   // ============================================
   // 4. SOCIAL METHODS
   // ============================================
-
+  @Transactional(readOnly = true)
   public HeadToHeadDto getHeadToHead(UUID myId, UUID opponentId) {
     List<Match> matches = matchRepository.findHeadToHead(myId, opponentId);
 
@@ -305,7 +317,7 @@ public class MatchService {
         opponent.getFirstName() + " " + opponent.getLastName()
     );
   }
-
+  @Transactional(readOnly = true)
   public List<OpponentStatsDto> getMostPlayedOpponents(UUID userId, int limit) {
     List<Object[]> results = matchRepository.findMostPlayedOpponents(userId, PageRequest.of(0, limit));
     List<OpponentStatsDto> stats = new ArrayList<>();

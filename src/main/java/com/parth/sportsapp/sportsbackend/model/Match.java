@@ -52,6 +52,7 @@ public class Match {
   @Column(name = "status", nullable = false)
   private String status = "OPEN"; // OPEN/FULL (Lobby Status)
 
+  // This is the list of all participants for that match
   @OneToMany(mappedBy = "match", cascade = CascadeType.ALL) // Cascade allows saving participants with match
   private List<Participants> participants;
 

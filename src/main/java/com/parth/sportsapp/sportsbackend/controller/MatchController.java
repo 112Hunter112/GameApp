@@ -3,6 +3,7 @@ package com.parth.sportsapp.sportsbackend.controller;
 import com.parth.sportsapp.sportsbackend.dto.*;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
+import com.parth.sportsapp.sportsbackend.service.JwtUtil;
 import com.parth.sportsapp.sportsbackend.service.MatchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -29,6 +30,9 @@ public class MatchController {
 
   @Autowired
   private UserRepository userRepository;
+
+  @Autowired
+  private JwtUtil jwtUtil;
 
   // ============================================
   // 1. MATCH LOGGING & HISTORY
@@ -83,6 +87,11 @@ public class MatchController {
   // 3. STATISTICS (PROFILE)
   // ============================================
 
+  /**
+   * THIS WORKS
+   *
+   * @return
+   */
   @GetMapping("/stats/overall")
   public ResponseEntity<UserStatsDto> getOverallStats() {
     return ResponseEntity.ok(matchService.getOverallStats(getCurrentUserId()));
@@ -94,10 +103,33 @@ public class MatchController {
   }
 
   @GetMapping("/stats/streak")
-  public ResponseEntity<StreakDto> getCurrentStreak() {
-    Integer streakCount = matchService.getCurrentStreak();
-    // Wrap the integer into your DTO object
-    return ResponseEntity.ok(new StreakDto(streakCount.toString(), streakCount));
+  public ResponseEntity<StreakDto> getCurrentStreak(@RequestHeader("Authorization") String authHeader) {
+    // 1. Extract UUID
+    UUID userId = getUserIdFromToken(authHeader);
+
+    // 2. Get the streak count from Service
+    Integer streakCount = matchService.getCurrentStreak(userId);
+
+    // 3. Determine the Label
+    // Since your current service logic ONLY counts wins, we know:
+    // If > 0, it's a WIN streak. If 0, it's NONE.
+    String streakType = (streakCount > 0) ? "WIN" : "NONE";
+
+    // 4. Return result with the correct label
+    return ResponseEntity.ok(new StreakDto(streakType, streakCount));
+  }
+
+  // Your helper method
+  private UUID getUserIdFromToken(String authHeader) {
+    if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+      throw new RuntimeException("Invalid Authorization Header");
+    }
+    String jwtToken = authHeader.substring(7);
+
+    // Ensure your JwtUtil has this method returning a String UUID
+    String userIdString = jwtUtil.extractUserId(jwtToken);
+
+    return UUID.fromString(userIdString);
   }
 
   // ============================================

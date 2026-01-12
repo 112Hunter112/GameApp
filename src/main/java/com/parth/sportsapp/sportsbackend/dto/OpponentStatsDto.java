@@ -19,4 +19,44 @@ public class OpponentStatsDto {
   }
 
   // Getters and setters
+
+  public UUID getOpponentId() {
+    return opponentId;
+  }
+
+  public void setOpponentId(UUID opponentId) {
+    this.opponentId = opponentId;
+  }
+
+  public String getOpponentName() {
+    return opponentName;
+  }
+
+  public void setOpponentName(String opponentName) {
+    this.opponentName = opponentName;
+  }
+
+  public long getTotalMatches() {
+    return totalMatches;
+  }
+
+  public void setTotalMatches(long totalMatches) {
+    this.totalMatches = totalMatches;
+  }
+
+  public long getWins() {
+    return wins;
+  }
+
+  public void setWins(long wins) {
+    this.wins = wins;
+  }
+
+  public long getLosses() {
+    return losses;
+  }
+
+  public void setLosses(long losses) {
+    this.losses = losses;
+  }
 }

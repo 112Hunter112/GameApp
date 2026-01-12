@@ -10,337 +10,251 @@ import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.repository.FriendshipRepository;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class FriendshipService {
 
+  @Autowired private UserRepository userRepository;
+  @Autowired private FriendshipRepository friendshipRepository;
+  @Autowired private FriendshipMapper friendshipMapper;
 
-  @Autowired
-  private UserRepository userRepository;
-
-  @Autowired
-  private FriendshipRepository friendshipRepository;
-
-  @Autowired
-  private FriendshipMapper friendshipMapper;
-
-
-  // a person should be able to send a friend request, if a person tries to re-register the
-  // request using the url, call existsFriendshipBetween and see if false or not
+  // =====================================================================
+  // 🛡️ HELPER: The Logic Hibernate Couldn't Handle
+  // =====================================================================
   /**
-   * Sends a friend request.
-   * @param requesterId - The ID of the person currently logged in (From JWT)
-   * @param requestDto - The ID of the person they want to friend (From DTO)
+   * EXTRACTS the "Other Person" from a Friendship object.
+   * If I am the requester, the friend is the receiver.
+   * If I am the receiver, the friend is the requester.
    */
-  public FriendshipResponse friendRequest(UUID requesterId, FriendshipRequest requestDto) {
+  private User getFriendFromFriendship(Friendship f, UUID myId) {
+    if (f.getRequester().getId().equals(myId)) {
+      return f.getReceiver();
+    } else {
+      return f.getRequester();
+    }
+  }
 
-    // 1. EXTRACT receiverId FIRST (This was the missing step!)
+  private UserSummaryDto convertToUserSummary(User user) {
+    return new UserSummaryDto(
+        user.getId(),
+        user.getFirstName(),
+        user.getLastName(),
+        user.getEmail(),
+        user.getBio(),
+        user.getProfilePictureUrl()
+    );
+  }
+
+  // =====================================================================
+  // 1. FRIEND REQUESTS (Send / Accept / Reject)
+  // =====================================================================
+
+  @Transactional
+  public FriendshipResponse friendRequest(UUID requesterId, FriendshipRequest requestDto) {
     UUID receiverId = requestDto.getReceiverId();
 
     if (requesterId.equals(receiverId)) {
       throw new RuntimeException("You cannot send a friend request to yourself.");
     }
 
-    // 2. Check if connection exists
-    boolean exists = friendshipRepository.existsFriendshipBetween(requesterId, receiverId);
-    if (exists) {
+    // Check if connection exists (using Boolean query which is safe)
+    if (friendshipRepository.areFriends(requesterId, receiverId) ||
+        friendshipRepository.findFriendshipBetween(requesterId, receiverId).isPresent()) {
       throw new RuntimeException("Friendship or pending request already exists.");
     }
 
-    // 3. Check Blocking
-    if (friendshipRepository.isBlocked(requesterId, receiverId) ||
-        friendshipRepository.isBlocked(receiverId, requesterId)) {
-      throw new RuntimeException("Cannot send request: You are blocked or have blocked this user.");
-    }
-
-    // 4. Fetch Entities
     User requester = userRepository.findById(requesterId)
         .orElseThrow(() -> new RuntimeException("Requester not found"));
     User receiver = userRepository.findById(receiverId)
         .orElseThrow(() -> new RuntimeException("Receiver not found"));
 
-    // 5. Create & Save
     Friendship friendship = new Friendship();
     friendship.setRequester(requester);
     friendship.setReceiver(receiver);
     friendship.setStatus(FriendshipStatus.PENDING);
-
-    // 6. Set the Message (from the DTO)
     friendship.setMessage(requestDto.getMessage());
 
-    Friendship savedFriendship = friendshipRepository.save(friendship);
-
-    return friendshipMapper.toResponse(savedFriendship);
+    return friendshipMapper.toResponse(friendshipRepository.save(friendship));
   }
 
-  // person should be able to REJECT requests
+  @Transactional
+  public FriendshipResponse acceptRequest(UUID requestId, UUID currentUserId) {
+    Friendship request = friendshipRepository.findById(requestId)
+        .orElseThrow(() -> new RuntimeException("Friend request not found"));
 
-  /**
-   * Rejects (Declines) a pending request.
-   * Usually, we just delete the row so they can request again later (or keep it as DECLINED).
-   * For now, let's delete it to keep it simple.
-   */
+    if (!request.getReceiver().getId().equals(currentUserId)) {
+      throw new RuntimeException("Unauthorized: You did not receive this request.");
+    }
+
+    if (request.getStatus() != FriendshipStatus.PENDING) {
+      throw new RuntimeException("Request is not pending.");
+    }
+
+    request.setStatus(FriendshipStatus.ACCEPTED);
+    return friendshipMapper.toResponse(friendshipRepository.save(request));
+  }
+
+  @Transactional
   public void rejectRequest(UUID requestId, UUID currentUserId) {
     Friendship request = friendshipRepository.findById(requestId)
         .orElseThrow(() -> new RuntimeException("Friend request not found"));
 
     if (!request.getReceiver().getId().equals(currentUserId)) {
-      throw new RuntimeException("Unauthorized: You did not receive this request.");
+      throw new RuntimeException("Unauthorized");
     }
-
     friendshipRepository.delete(request);
   }
 
-  // person should be able to ACCEPT
-  /**
-   * Accepts a pending friend request.
-   * @param requestId The UUID of the friendship row (NOT the user ID)
-   * @param currentUserId The ID of the person clicking "Accept" (Must be the Receiver)
-   */
-  public FriendshipResponse acceptRequest(UUID requestId, UUID currentUserId) {
-    Friendship request = friendshipRepository.findById(requestId)
-        .orElseThrow(() -> new RuntimeException("Friend request not found"));
-
-    // SECURITY CHECK: Only the person who received the request can accept it
-    if (!request.getReceiver().getId().equals(currentUserId)) {
-      throw new RuntimeException("Unauthorized: You did not receive this request.");
-    }
-
-    if (request.getStatus() != FriendshipStatus.PENDING) {
-      throw new RuntimeException("Request is not pending (Already accepted or handled).");
-    }
-
-    request.setStatus(FriendshipStatus.ACCEPTED);
-    Friendship saved = friendshipRepository.save(request);
-
-    return friendshipMapper.toResponse(saved);
-  }
-
-
-
-  /**
-   * Returns the status of the relationship (e.g., PENDING, ACCEPTED, NONE).
-   * The Frontend uses this to decide which button to show:
-   * - "NONE" -> Show "Add Friend" button
-   * - "PENDING" -> Show "Request Sent" (grayed out) or "Accept/Decline"
-   * - "ACCEPTED" -> Show "Friends" badge
-   */
-  public String getFriendshipStatus(UUID myId, UUID otherId) {
-    if (myId.equals(otherId)) {
-      return "SELF"; // Special case: You are looking at your own profile
-    }
-
-    // This uses the efficient query you already wrote in the Repository
-    return friendshipRepository.findRelationshipStatus(myId, otherId)
-        .map(FriendshipStatus::name) // Converts Enum (ACCEPTED) to String "ACCEPTED"
-        .orElse("NONE");             // If no row exists, they are strangers
-  }
-
-
-
-  //list all friend requests when the user wants to see who they friend requested
-  /**
-   * List who I have sent requests to (so I can remember or cancel them).
-   */
-  public List<FriendshipResponse> getSentRequests(UUID userId) {
-
-    List<Friendship> requests = friendshipRepository.findSentRequests(userId);
-
-    return requests.stream()
-        .map(friendshipMapper::toResponse)
-        .collect(Collectors.toList());
-  }
-
-  // list all friends of the user
-  /**
-   * List all my accepted friends.
-   */
-  public List<UserSummaryDto> getMyFriends(UUID userId) {
-    List<User> friends = friendshipRepository.findAllFriends(userId);
-    return friends.stream()
-        .map(this::convertToUserSummary) // Helper method below
-        .collect(Collectors.toList());
-  }
-
-  /**
-   * List Suggested Friends (Friends of Friends).
-   */
-  public List<UserSummaryDto> getSuggestedFriends(UUID userId, Pageable pageable) {
-    List<User> suggestions = friendshipRepository.findFriendSuggestions(userId, pageable);
-    return suggestions.stream()
-        .map(this::convertToUserSummary)
-        .collect(Collectors.toList());
-  }
-
-  /**
-   * Search my friend list by name.
-   */
-  public List<UserSummaryDto> searchFriends(UUID userId, String query) {
-    List<User> matches = friendshipRepository.searchFriends(userId, query);
-    return matches.stream()
-        .map(this::convertToUserSummary)
-        .collect(Collectors.toList());
-  }
-
-  /**
-   * Get Mutual Friends count and list.
-   * This is usually two separate calls: one for the number "5 Mutual Friends",
-   * and one for the actual list when they click it.
-   */
-  public long getMutualFriendsCount(UUID myId, UUID otherId) {
-    return friendshipRepository.countMutualFriends(myId, otherId);
-  }
-
-  public List<UserSummaryDto> getMutualFriends(UUID myId, UUID otherId) {
-    List<User> mutuals = friendshipRepository.findMutualFriends(myId, otherId);
-    return mutuals.stream()
-        .map(this::convertToUserSummary)
-        .collect(Collectors.toList());
-  }
-
-  // ==========================================
-  // 5. COUNTS (For Badges)
-  // ==========================================
-
-  /**
-   * Get the number of pending requests (Red notification badge).
-   */
-  public long getPendingRequestCount(UUID userId) {
-    return friendshipRepository.countPendingRequests(userId);
-  }
-
-  // ==========================================
-  // 6. HELPER (Conversion)
-  // ==========================================
-
-  /**
-   * Quick helper to convert User Entity -> UserSummaryDto
-   * (Since we reuse this logic 4 times above)
-   */
-  private UserSummaryDto convertToUserSummary(User user) {
-    return new UserSummaryDto(
-    user.getId(), 
-    user.getFirstName(), 
-    user.getLastName(), 
-    user.getEmail(),
-    user.getBio(),             // Added
-    user.getProfilePictureUrl() // Added
-);
-  }
-
-  // ==========================================
-  // 7. ACTIONS (Undo / Unfriend)
-  // ==========================================
-
-  /**
-   * Cancel a request I sent (Undo).
-   * Logic: Verify I am the requester and status is PENDING.
-   */
+  @Transactional
   public void cancelSentRequest(UUID requestId, UUID currentUserId) {
     Friendship request = friendshipRepository.findById(requestId)
         .orElseThrow(() -> new RuntimeException("Request not found"));
 
     if (!request.getRequester().getId().equals(currentUserId)) {
-      throw new RuntimeException("Unauthorized: You did not send this request.");
+      throw new RuntimeException("Unauthorized");
     }
-
-    if (request.getStatus() != FriendshipStatus.PENDING) {
-      throw new RuntimeException("Cannot cancel: Request is already " + request.getStatus());
-    }
-
     friendshipRepository.delete(request);
   }
 
-  /**
-   * Unfriend someone.
-   * Logic: Find the friendship row (regardless of who requested) and delete it.
-   */
+  @Transactional
   public void unfriendUser(UUID friendId, UUID currentUserId) {
     Friendship friendship = friendshipRepository.findFriendshipBetween(currentUserId, friendId)
         .orElseThrow(() -> new RuntimeException("Friendship not found"));
-
     friendshipRepository.delete(friendship);
   }
 
+  // =====================================================================
+  // 2. LISTS (The Crash Fix)
+  // =====================================================================
+
   /**
-   * 1. Profile Stat: "Total Friends"
-   * Uses: countAcceptedFriends
+   * Fixed: Gets Friendship objects and extracts Users in Java.
    */
+  @Transactional(readOnly = true)
+  public List<UserSummaryDto> getMyFriends(UUID userId) {
+    return friendshipRepository.findAllFriends(userId).stream()
+        .map(f -> getFriendFromFriendship(f, userId)) // Java Logic
+        .map(this::convertToUserSummary)
+        .collect(Collectors.toList());
+  }
+
+  @Transactional(readOnly = true)
+  public List<UserSummaryDto> searchFriends(UUID userId, String query) {
+    return friendshipRepository.searchFriends(userId, query).stream()
+        .map(f -> getFriendFromFriendship(f, userId)) // Java Logic
+        .map(this::convertToUserSummary)
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Logic: Get MY friends, then get THEIR friends, remove duplicates & me.
+   * Safer than complex SQL for now.
+   */
+  @Transactional(readOnly = true)
+  public List<UserSummaryDto> getSuggestedFriends(UUID userId, Pageable pageable) {
+    // 1. Get my friends
+    List<User> myFriends = friendshipRepository.findAllFriends(userId).stream()
+        .map(f -> getFriendFromFriendship(f, userId))
+        .collect(Collectors.toList());
+
+    Set<UUID> myFriendIds = myFriends.stream().map(User::getId).collect(Collectors.toSet());
+    myFriendIds.add(userId); // Exclude myself
+
+    // 2. Find friends of friends
+    Set<User> suggestions = new HashSet<>();
+
+    for (User friend : myFriends) {
+      // Get friends of this friend
+      List<Friendship> friendsOfFriend = friendshipRepository.findAllFriends(friend.getId());
+      for (Friendship f : friendsOfFriend) {
+        User candidate = getFriendFromFriendship(f, friend.getId());
+        // If I'm not already friends with them and it's not me
+        if (!myFriendIds.contains(candidate.getId())) {
+          suggestions.add(candidate);
+        }
+      }
+      if (suggestions.size() >= pageable.getPageSize()) break; // Limit logic
+    }
+
+    return suggestions.stream()
+        .limit(pageable.getPageSize())
+        .map(this::convertToUserSummary)
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Logic: Get intersection of Friend List A and Friend List B.
+   */
+  @Transactional(readOnly = true)
+  public List<UserSummaryDto> getMutualFriends(UUID user1, UUID user2) {
+    // Get friends of User 1
+    Set<UUID> friendsOf1 = friendshipRepository.findAllFriends(user1).stream()
+        .map(f -> getFriendFromFriendship(f, user1).getId())
+        .collect(Collectors.toSet());
+
+    // Get friends of User 2 and check intersection
+    return friendshipRepository.findAllFriends(user2).stream()
+        .map(f -> getFriendFromFriendship(f, user2))
+        .filter(u -> friendsOf1.contains(u.getId())) // Intersection check
+        .map(this::convertToUserSummary)
+        .collect(Collectors.toList());
+  }
+
+  // =====================================================================
+  // 3. STATUS & INFO
+  // =====================================================================
+
+  public String getFriendshipStatus(UUID myId, UUID otherId) {
+    if (myId.equals(otherId)) return "SELF";
+
+    return friendshipRepository.findRelationshipStatus(myId, otherId)
+        .orElse("NONE"); // Returns String "ACCEPTED", "PENDING", or "NONE"
+  }
+
+  public List<FriendshipResponse> getReceivedRequests(UUID userId) {
+    return friendshipRepository.findPendingRequests(userId).stream()
+        .map(friendshipMapper::toResponse)
+        .collect(Collectors.toList());
+  }
+
+  public List<FriendshipResponse> getSentRequests(UUID userId) {
+    return friendshipRepository.findSentRequests(userId).stream()
+        .map(friendshipMapper::toResponse)
+        .collect(Collectors.toList());
+  }
+
+  public long getPendingRequestCount(UUID userId) {
+    return friendshipRepository.countPendingRequests(userId);
+  }
+
   public long getFriendCount(UUID userId) {
     return friendshipRepository.countAcceptedFriends(userId);
   }
 
-  /**
-   * 2. Security Check: "Are we friends?"
-   * Uses: areFriends
-   * Useful for permission checks (e.g., "Only friends can see my phone number")
-   */
-  public boolean checkIsFriend(UUID myId, UUID otherId) {
-    return friendshipRepository.areFriends(myId, otherId);
-  }
+  // =====================================================================
+  // 4. BATCH
+  // =====================================================================
 
-  /**
-   * 3. The "Inbox": View all requests waiting for ME to accept.
-   * Uses: findPendingRequests
-   */
-  public List<FriendshipResponse> getReceivedRequests(UUID userId) {
-    // 1. Fetch the entities using your specific query
-    List<Friendship> received = friendshipRepository.findPendingRequests(userId);
-
-    // 2. Convert to DTOs so the frontend can display the Requester's name/face
-    return received.stream()
-        .map(friendshipMapper::toResponse)
-        .collect(Collectors.toList());
-  }
-
-
-  // In FriendshipService.java
-
-  /**
-   * Accept multiple requests at once.
-   * Useful for a "Select All -> Accept" button in the UI.
-   */
   @Transactional
   public List<FriendshipResponse> acceptMultipleRequests(List<UUID> requestIds, UUID currentUserId) {
-
-    // 1. Fetch all requested rows in one query
     List<Friendship> requests = friendshipRepository.findAllById(requestIds);
+    List<Friendship> toSave = new ArrayList<>();
 
-    if (requests.size() != requestIds.size()) {
-      // Optional: Warn if some IDs were not found, or just process the ones that were found.
-    }
-
-    // 2. Iterate and Validate
     for (Friendship request : requests) {
-      // Security Check: Ensure the current user is the RECEIVER for ALL of them
-      if (!request.getReceiver().getId().equals(currentUserId)) {
-        throw new RuntimeException("Unauthorized: You are not the receiver for request ID: " + request.getId());
+      if (request.getReceiver().getId().equals(currentUserId) &&
+          request.getStatus() == FriendshipStatus.PENDING) {
+        request.setStatus(FriendshipStatus.ACCEPTED);
+        toSave.add(request);
       }
-
-      // Logic Check: Ensure they are actually PENDING
-      if (request.getStatus() != FriendshipStatus.PENDING) {
-        throw new RuntimeException("Request " + request.getId() + " is not PENDING.");
-      }
-
-      // Update Status
-      request.setStatus(FriendshipStatus.ACCEPTED);
     }
-
-    // 3. Batch Save (Very efficient)
-    List<Friendship> savedFriendships = friendshipRepository.saveAll(requests);
-
-    // 4. Convert to DTOs
-    return savedFriendships.stream()
+    return friendshipRepository.saveAll(toSave).stream()
         .map(friendshipMapper::toResponse)
         .collect(Collectors.toList());
   }
-
 }
