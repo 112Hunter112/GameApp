@@ -73,6 +73,7 @@ public class MatchMapper {
 
     dto.setHost(participant.isHost());
     dto.setStatus(participant.getStatus().name());
+    dto.setTeamName(participant.getTeamName());
 
     return dto;
   }
@@ -85,6 +86,7 @@ public class MatchMapper {
     dto.setFirstName(user.getFirstName());
     dto.setLastName(user.getLastName());
     dto.setEmail(user.getEmail());
+    
 
     // --- ADD THESE TWO LINES ---
     dto.setBio(user.getBio());

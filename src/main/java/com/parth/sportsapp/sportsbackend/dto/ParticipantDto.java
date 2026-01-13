@@ -5,6 +5,14 @@ public class ParticipantDto {
   private boolean isHost;      // Did they organize it?
   private String status;       // PENDING, ACCEPTED, REJECTED
 
+
+  private String teamName; 
+
+
+  
+
+public String getTeamName() { return teamName; }
+public void setTeamName(String teamName) { this.teamName = teamName; }
   // Getters, Setters, Constructor
 
   public UserSummaryDto getUser() {
