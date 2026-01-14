@@ -29,6 +29,7 @@ public class ManualMatchRequest {
 
   private String winningTeam; // Expected values: "TEAM_A", "TEAM_B"
 
+
   public String getWinningTeam() { return winningTeam; }
   public void setWinningTeam(String winningTeam) { this.winningTeam = winningTeam; }
 
