@@ -2,9 +2,6 @@ pipeline {
     agent any
 
     tools {
-        // These names must match what is configured in: Manage Jenkins > Global Tool Configuration
-        // If you haven't set them up, Jenkins will error.
-        // PRO TIP: Use 'maven' if you installed the standard Maven plugin.
         maven 'maven-3'
         jdk 'jdk-17'
     }
@@ -12,7 +9,6 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                // Gets the code from your GitHub repo
                 checkout scm
             }
         }
@@ -20,9 +16,36 @@ pipeline {
         stage('Build & Test') {
             steps {
                 echo 'Building and Testing...'
-                // This creates the 'target' folder and runs your Unit Tests
-                // -DskipTests=false ensures your new MatchServiceTest runs!
-                //sh 'mvn clean package -DskipTests=false'
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Prepare Secrets') {
+            // This section unlocks the Jenkins Vault
+            environment {
+                // Jenkins automatically splits 'Username with password' into two variables:
+                // EMAIL_USR and EMAIL_PSW
+                EMAIL = credentials('email-creds')
+
+                // This grabs the text directly
+                JWT_KEY = credentials('jwt-secret')
+            }
+            steps {
+                script {
+                    echo 'Injecting Real Secrets from Vault...'
+
+                    sh 'mkdir -p src/main/resources'
+
+                    // We use the environment variables ($EMAIL_USR, etc)
+                    // NOT the real passwords. Safe for GitHub!
+                    sh """
+                    echo "spring.mail.username=$EMAIL_USR" > src/main/resources/application-secrets.properties
+                    echo "spring.mail.password=$EMAIL_PSW" >> src/main/resources/application-secrets.properties
+                    echo "jwt.secret=$JWT_KEY" >> src/main/resources/application-secrets.properties
+                    echo "jwt.expiration=86400000" >> src/main/resources/application-secrets.properties
+                    echo "db.password=password" >> src/main/resources/application-secrets.properties
+                    """
+                }
             }
         }
 
@@ -30,7 +53,6 @@ pipeline {
             steps {
                 script {
                     echo 'Building Docker Image...'
-                    // Uses the Dockerfile to build the image
                     sh 'docker build -t sports-backend:latest .'
                 }
             }
@@ -40,12 +62,6 @@ pipeline {
     post {
         always {
             cleanWs()
-        }
-        success {
-            echo 'SUCCESS: Your code is verified and built!'
-        }
-        failure {
-            echo 'FAILURE: Check the logs to see what broke.'
         }
     }
 }
