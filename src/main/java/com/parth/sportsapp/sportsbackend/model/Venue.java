@@ -70,6 +70,19 @@ public class Venue {
   @Column(name = "is_active", nullable = false)
   private boolean isActive = true;
 
+  // if isManaged = true, then we handle the Venue.
+  @Column(name = "is_managed", nullable = false)
+  private boolean isManaged = true;
+
+
+  // the ID of the venue offered by the ORM for the venue,
+  @Column(name = "external_id")
+  private String externalId; // Stores "google_ChIJ..." or "osm_12345"
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "venue_source")
+  private VenueSource source = VenueSource.AUTO_CREATED; // Default
+
   // --- Constructors ---
 
   public Venue() {}
@@ -137,5 +150,21 @@ public class Venue {
 
   public void setLocation(Point location) {
     this.location = location;
+  }
+
+  public boolean isManaged() { return isManaged; }
+
+  public void setManaged(boolean managed) { isManaged = managed; }
+
+  public String getExternalId() { return externalId; }
+
+  public void setExternalId(String externalId) { this.externalId = externalId; }
+
+  public VenueSource getSource() {
+    return source;
+  }
+
+  public void setSource(VenueSource source) {
+    this.source = source;
   }
 }

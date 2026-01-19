@@ -6,15 +6,24 @@ import com.parth.sportsapp.sportsbackend.dto.VenueResponse;
 import com.parth.sportsapp.sportsbackend.mapper.VenueMapper;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.model.Venue;
+import com.parth.sportsapp.sportsbackend.model.VenueSource;
 import com.parth.sportsapp.sportsbackend.repository.SportsRepository;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
 import com.parth.sportsapp.sportsbackend.repository.VenueRepository;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.PrecisionModel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -52,9 +61,20 @@ public class VenueService {
 @Autowired
 private UserRepository userRepository;
 
+//  @Autowired
+//  private GeometryFactory geometryFactory;
+
+  // switch this to autowire down the line
+GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+  private static final Logger logger = LoggerFactory.getLogger(VenueService.class);
+
   private static final double KM_TO_METERS = 1000.0;
   private static final double MAX_SEARCH_RADIUS_KM = 50.0;
   private static final double DEFAULT_SEARCH_RADIUS_KM = 10.0;
+  private static final double MIN_SEARCH_RADIUS_M = 20.0;
+  private static final double MAX_SEARCH_RADIUS_M = 200.0;
+
+  private static final String SYSTEM_ADMIN_EMAIL = "public_venues@sportsapp.com";
 
 
 
@@ -232,6 +252,15 @@ private UserRepository userRepository;
   }
 
 
+  /**
+   * A method that will transition existing non-vendor Venues into the hands of the vendor if the
+   * venue actually belongs to them.
+   *
+   * todo Finish this later
+   *
+   */
+
+
   // ----------------USER SIDE ------------------
 
   public Page<VenueResponse> searchNearbyVenues(double lat, double lon, double radiusKm, Pageable pageable) {
@@ -240,7 +269,7 @@ private UserRepository userRepository;
       throw new RuntimeException("Invalid latitude or longitude");
     }
 
-    // 2. [FIX] Validate Radius and capture the CLEAN value
+    // 2. Validate Radius and capture the CLEAN value
     // This ensures we use the logic inside 'validateRadius' (max 50km, etc.)
     double validRadiusKm = validateRadius(radiusKm);
 
@@ -282,5 +311,183 @@ private UserRepository userRepository;
   }
 
 
+  // This is th format of the ORM output from the manual match end
+//  {
+//    "place_id": 123456,                // Map this to -> externalId
+//      "lat": "40.7829",                  // Map this to -> lat
+//      "lon": "-73.9654",                 // Map this to -> lng
+//      "display_name": "Central Park, Manhattan, New York...", // -> name
+//      "address": {                       // -> venueAddress
+//    "leisure": "Central Park",
+//        "road": "Central Park West",
+//        "city": "New York",
+//        "country": "USA"
+//  }
+//  }
+
+  /**
+   * This method helps the user import a Venue from ORM maps (Open source software) and use it
+   *
+   * The user will be ADMIN for new venues that are listed on the ORM maps.
+   *
+   */
+  @Transactional
+  public VenueResponse getOrCreatePublicVenue(String name, String address, Double lat, Double lng, String externalId) {
+
+    validateInput(name, lat, lng, externalId);
+    String normalizedName = name != null ? name.trim() : null;
+
+   // ----- 1 . CHECK FOR DUPLICATES -------------
+
+    // option A: Check to see if externalID = !null; if so then check for duplicates from the DB
+    if(externalId != null) {
+      // if it is a duplicate, I want to return the Venue from the DB
+      Optional<Venue> exisitngVenue = venueRepository.findByExternalId(externalId);
+
+
+
+      if(exisitngVenue.isPresent()) { return venueMapper.toResponse(exisitngVenue.get()); }
+    }
+
+    // using a second if to check for pin proximity to an existing venue in db.
+
+    // Option B: If externalID = null, then compare the lat and long of the data
+     if(lat != null && lng != null) {
+      Optional<Venue> nearby = venueRepository.findFirstByLocationNear(lat, lng, MIN_SEARCH_RADIUS_M);
+      if (nearby.isPresent()) {
+        logger.info("Found existing venue within 50m: {}", nearby.get().getName());
+        return venueMapper.toResponse(nearby.get());
+      }
+    }
+
+//Option C: Check Fuzzy Name + Proximity (Prevent duplicates like "Rajesh Tennis" vs "Rajesh Court")
+    if (normalizedName != null && !normalizedName.isBlank() && lat != null && lng != null) {
+      Optional<Venue> nearbyWithSimilarName = findSimilarVenueNearby(
+          normalizedName, lat, lng, MAX_SEARCH_RADIUS_M);
+
+      if (nearbyWithSimilarName.isPresent()) {
+        logger.info("Found similar venue within 200m: {}", nearbyWithSimilarName.get().getName());
+        return venueMapper.toResponse(nearbyWithSimilarName.get());
+      }
+    }
+
+
+    // ------------ 2. Fetch User and add fill in data ----------------
+
+    // fetch the ADMIN User
+    User systemOwner = userRepository.findByEmail(SYSTEM_ADMIN_EMAIL)
+        .orElseThrow(() -> new RuntimeException("System Admin User missing! Run DB seeds."));
+
+    // If the venue is not listed in DB, then create a Venue
+    Venue venue = new Venue();
+    venue.setName(name != null ? name : "Unknown Location");
+    venue.setAddress(address != null ? address : "Custom Pin Drop");
+    venue.setOwner(systemOwner); // this assigns the owner as ADMIN
+    venue.setManaged(false); // Important: This prevents bookings
+    venue.setActive(true);
+
+    // If it has an ID, it came from an external map provider
+    if (externalId != null) {
+
+      venue.setSource(VenueSource.GOOGLE_PLACES); // or VenueSource.OSM
+      venue.setExternalId(externalId);
+    } else {
+      // No ID = It's a raw user pin drop
+      venue.setSource(VenueSource.AUTO_CREATED);
+      venue.setExternalId("pin_" + lat + "_" + lng);
+    }
+
+    // Set PostGIS location
+    if (lat != null && lng != null) {
+      venue.setLocation(geometryFactory.createPoint(new Coordinate(lng, lat)));
+    }
+
+    // Add Default values here
+    venue.setPhoneNumber("N/A");
+    venue.setDescription("Public venue imported from external source.");
+    venue.setOpeningHours(java.util.Collections.emptyMap());
+    venue.setAmenities(List.of("Public Access"));
+
+    // --------------- Save the Venue in the DB and return
+
+    try {
+      // Attempt to save
+      Venue savedVenue = venueRepository.save(venue);
+      return venueMapper.toResponse(savedVenue);
+
+    } catch (DataIntegrityViolationException e) {
+      // RACE CONDITION DETECTED!
+      // This block runs if someone else inserted the venue milliseconds before us.
+      logger.info("Race condition hit for venue: {}. Fetching existing.", externalId);
+
+      // 1. Determine the ID to search for
+      String searchId = (externalId != null) ? externalId : "pin_" + lat + "_" + lng;
+
+      // 2. Fetch the one that "won" the race
+      Venue winner = venueRepository.findByExternalId(searchId)
+          .orElseThrow(() -> new RuntimeException("Concurrency Error: Venue exists but cannot be found."));
+
+      return venueMapper.toResponse(winner);
+    }
+  }
+
+
+  // ----------------HELPER METHODS ------------------
+  private void validateInput(String name, Double lat, Double lng, String externalId) {
+    // Must have EITHER externalId OR coordinates
+    if ((externalId == null || externalId.isBlank()) && (lat == null || lng == null)) {
+      throw new IllegalArgumentException(
+          "Must provide either externalId OR both latitude and longitude"
+      );
+    }
+
+    // Validate coordinates if provided
+    if (lat != null || lng != null) {
+      if (lat == null || lng == null) {
+        throw new IllegalArgumentException("Both latitude and longitude are required");
+      }
+
+      if (lat < -90 || lat > 90) {
+        throw new IllegalArgumentException("Latitude must be between -90 and 90");
+      }
+
+      if (lng < -180 || lng > 180) {
+        throw new IllegalArgumentException("Longitude must be between -180 and 180");
+      }
+    }
+
+    // Validate name length
+    if (name != null && name.length() > 200) {
+      throw new IllegalArgumentException("Venue name too long (max 200 characters)");
+    }
+  }
+
+
+
+
+  private Optional<Venue> findSimilarVenueNearby(String normalizedName, Double lat, Double lng, double radiusMeters) {
+
+    // 1. Get venues nearby using PostGIS (Fast)
+    // We use Pageable to limit to 20 results max to be safe
+    Page<Venue> nearbyVenues = venueRepository.findVenuesNearby(lat, lng, radiusMeters, PageRequest.of(0, 20));
+
+    // 2. Filter by Name Similarity (Levenshtein or Contains)
+    for (Venue venue : nearbyVenues.getContent()) {
+      if (isNameSimilar(normalizedName, venue.getName())) {
+        return Optional.of(venue);
+      }
+    }
+
+    return Optional.empty();
+  }
+
+  private boolean isNameSimilar(String inputName, String dbName) {
+    if (dbName == null) return false;
+    String s1 = inputName.toLowerCase();
+    String s2 = dbName.toLowerCase();
+
+    // Exact substring match (e.g. "Rajesh Tennis" contains "Rajesh")
+    return s1.contains(s2) || s2.contains(s1);
+  }
 
 }
