@@ -159,4 +159,20 @@ public class VenueController {
 //    // Call Service -> Repository
 //    return venueService.findNearby(lat, lng, radiusKm);
 //  }
+
+
+
+  @PostMapping("/public/import")
+  public ResponseEntity<VenueResponse> importPublicVenue(
+      @RequestParam(required = false) String name,
+      @RequestParam(required = false) String address,
+      @RequestParam(required = false) Double lat,
+      @RequestParam(required = false) Double lng,
+      @RequestParam(required = false) String externalId
+  ) {
+    // Call the robust service we just built
+    VenueResponse venue = venueService.getOrCreatePublicVenue(name, address, lat, lng, externalId);
+    return ResponseEntity.ok(venue);
+  }
+
 }
