@@ -52,6 +52,8 @@ public class Venue {
   @Column(name = "amenity")
   private List<String> amenities;
 
+
+  //use the point variable to hold the GPS coordinates
   @Column(columnDefinition = "geometry(Point, 4326)")
   private Point location;
 
