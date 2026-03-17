@@ -1,29 +1,43 @@
-version: '3.8'
-
 services:
-  # The PostGIS Database Service
+  # 1. The Database
   db:
     image: postgis/postgis:15-3.4
     container_name: sports-db
     environment:
       - POSTGRES_DB=sportsapp
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password # Matches db.password in your secrets file
+      - POSTGRES_PASSWORD=password
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: always
 
-  # Your Spring Boot App Service
+  # 2. Your Spring Boot App
   app:
     build: .
     container_name: sports-app
     ports:
       - "8080:8080"
     environment:
-      - DB_HOST=db  # This is the only one you strictly need here
+      - DB_HOST=db
     depends_on:
       - db
+    restart: on-failure
+
+  # 3. Jenkins (ADDED THIS PART to run Jenkins automatically)
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: sports-jenkins
+    user: root
+    ports:
+      - "9090:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
 
 volumes:
   postgres_data:
+  jenkins_home:

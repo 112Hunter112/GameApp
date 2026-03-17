@@ -1,18 +1,30 @@
-# Step 1: Use an official Java runtime as a parent image
-FROM eclipse-temurin:17-jre-alpine
-
-# Step 2: Set the working directory inside the container
+# --- STAGE 1: Build the App (Maven) ---
+# We use a Maven image to compile the code
+FROM maven:3.8.5-openjdk-17 AS build
 WORKDIR /app
 
-# Step 3: Copy the executable JAR file from your target folder to the container
-# Note: You must run 'mvn clean package' on your computer before building this
-COPY target/*.jar app.jar
+# Copy only the pom.xml first (to cache dependencies)
+COPY pom.xml .
+# Download dependencies (this step is cached if pom.xml doesn't change)
+RUN mvn dependency:go-offline
 
-# Step 4: Copy the secrets file so the app can find it
+# Copy the source code and build
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+# --- STAGE 2: Run the App (Java Runtime) ---
+# We use a lightweight Alpine image for the final container
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+
+# Copy the JAR file built in Stage 1
+# Notice we grab it from "--from=build"
+COPY --from=build /app/target/*.jar app.jar
+
+# Copy your secrets file
+# (Ensure this file exists in your project folder, or this line will fail)
 COPY src/main/resources/application-secrets.properties src/main/resources/application-secrets.properties
 
-# Step 5: Expose the port your app runs on
 EXPOSE 8080
 
-# Step 6: Command to run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]

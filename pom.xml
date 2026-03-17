@@ -112,10 +112,6 @@
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-spatial</artifactId>
-            <version>7.0.0.Beta2</version> </dependency>
-        <dependency>
-            <groupId>org.hibernate.orm</groupId>
-            <artifactId>hibernate-spatial</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>
@@ -130,6 +126,20 @@
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>1.10.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.hsr</groupId>
+            <artifactId>geohash</artifactId>
+            <version>1.4.0</version>
         </dependency>
 
     </dependencies>

@@ -29,6 +29,13 @@ public class ManualMatchRequest {
 
   private String winningTeam; // Expected values: "TEAM_A", "TEAM_B"
 
+  private String venueName;
+  private String venueAddress;
+  private Double venueLat;
+  private Double venueLng;
+  private String externalVenueId;
+
+
   public String getWinningTeam() { return winningTeam; }
   public void setWinningTeam(String winningTeam) { this.winningTeam = winningTeam; }
 
@@ -107,5 +114,45 @@ public class ManualMatchRequest {
   public String getOpponentName() {
     // You can remove this or keep it as a fallback if you only expect 1 external user most times
     return "Invited Player";
+  }
+
+  public String getVenueName() {
+    return venueName;
+  }
+
+  public void setVenueName(String venueName) {
+    this.venueName = venueName;
+  }
+
+  public String getVenueAddress() {
+    return venueAddress;
+  }
+
+  public void setVenueAddress(String venueAddress) {
+    this.venueAddress = venueAddress;
+  }
+
+  public Double getVenueLat() {
+    return venueLat;
+  }
+
+  public void setVenueLat(Double venueLat) {
+    this.venueLat = venueLat;
+  }
+
+  public Double getVenueLng() {
+    return venueLng;
+  }
+
+  public void setVenueLng(Double venueLng) {
+    this.venueLng = venueLng;
+  }
+
+  public String getExternalVenueId() {
+    return externalVenueId;
+  }
+
+  public void setExternalVenueId(String externalVenueId) {
+    this.externalVenueId = externalVenueId;
   }
 }

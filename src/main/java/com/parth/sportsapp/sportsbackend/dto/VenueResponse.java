@@ -1,5 +1,7 @@
 package com.parth.sportsapp.sportsbackend.dto;
 
+import com.parth.sportsapp.sportsbackend.model.VenueSource;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +25,9 @@ public class VenueResponse {
 
   // SAFE Owner Info (We don't return the full User entity with password!)
   private OwnerSummaryDto owner;
+
+  private String externalId;
+  private VenueSource source;
 
   // --- Nested DTO for Owner ---
   public static class OwnerSummaryDto {
@@ -64,4 +69,20 @@ public class VenueResponse {
   public void setActive(boolean active) { isActive = active; }
   public OwnerSummaryDto getOwner() { return owner; }
   public void setOwner(OwnerSummaryDto owner) { this.owner = owner; }
+
+  public String getExternalId() {
+    return externalId;
+  }
+
+  public void setExternalId(String externalId) {
+    this.externalId = externalId;
+  }
+
+  public VenueSource getSource() {
+    return source;
+  }
+
+  public void setSource(VenueSource source) {
+    this.source = source;
+  }
 }

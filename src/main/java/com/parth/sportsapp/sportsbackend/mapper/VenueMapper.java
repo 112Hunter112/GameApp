@@ -42,6 +42,8 @@ public class VenueMapper {
     venue.setOpeningHours(request.getOpeningHours());
     venue.setAmenities(request.getAmenities() != null ? request.getAmenities() : new ArrayList<>());
 
+
+
     // Set owner (FORCE ownership - security!)
     venue.setOwner(owner);
 
@@ -96,6 +98,9 @@ public class VenueMapper {
     response.setDescription(venue.getDescription());
     response.setOpeningHours(venue.getOpeningHours());
     response.setActive(venue.isActive());
+
+    response.setExternalId(venue.getExternalId());
+    response.setSource(venue.getSource());
 
     // ====================================================================
     // FIX: Copy the list to a new ArrayList to force it to load immediately
