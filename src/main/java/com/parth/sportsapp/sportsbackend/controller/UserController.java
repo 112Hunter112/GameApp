@@ -1,5 +1,6 @@
 package com.parth.sportsapp.sportsbackend.controller;
 
+import com.parth.sportsapp.sportsbackend.dto.UpdateProfileRequest;
 import com.parth.sportsapp.sportsbackend.dto.UserSummaryDto;
 import com.parth.sportsapp.sportsbackend.service.JwtUtil;
 import com.parth.sportsapp.sportsbackend.service.UserService;
@@ -60,8 +61,13 @@ public class UserController {
   }
 
 
-//  @PutMapping("/me") // <--- This is the part that completes the URL
-//  public ResponseEntity<UserResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
-//    return ResponseEntity.ok(userService.updateProfile(request));
-//  }
+  @PutMapping("/me")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<UserSummaryDto> updateProfile(
+      @RequestHeader("Authorization") String token,
+      @Valid @RequestBody UpdateProfileRequest request) {
+
+    UUID userId = getUserIdFromToken(token);
+    return ResponseEntity.ok(userService.updateProfile(userId, request));
+  }
 }

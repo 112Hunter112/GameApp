@@ -1,5 +1,6 @@
 package com.parth.sportsapp.sportsbackend.service;
 
+import com.parth.sportsapp.sportsbackend.dto.UpdateProfileRequest;
 import com.parth.sportsapp.sportsbackend.dto.UserSummaryDto;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
@@ -50,6 +51,38 @@ public class UserService {
         user.getEmail(),
         user.getBio(),             //
         user.getProfilePictureUrl() //
+    );
+  }
+
+  /**
+   * Update the profile fields for a given user.
+   */
+  public UserSummaryDto updateProfile(UUID userId, UpdateProfileRequest request) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+    if (request.getFirstName() != null && !request.getFirstName().isBlank()) {
+      user.setFirstName(request.getFirstName());
+    }
+    if (request.getLastName() != null && !request.getLastName().isBlank()) {
+      user.setLastName(request.getLastName());
+    }
+    if (request.getBio() != null) {
+      user.setBio(request.getBio());
+    }
+    if (request.getProfilePictureUrl() != null) {
+      user.setProfilePictureUrl(request.getProfilePictureUrl());
+    }
+
+    userRepository.save(user);
+
+    return new UserSummaryDto(
+        user.getId(),
+        user.getFirstName(),
+        user.getLastName(),
+        user.getEmail(),
+        user.getBio(),
+        user.getProfilePictureUrl()
     );
   }
 
