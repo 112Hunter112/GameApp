@@ -37,8 +37,7 @@ public class User {
   @Column(nullable = false)
   private String password;
 
-  @NotBlank(message = "Phone number required") // Added Java validation
-  @Column(nullable = false, unique = true)
+  @Column(unique = true)
   private String phoneNumber;
 
   @CreationTimestamp
@@ -84,6 +83,9 @@ public class User {
 
   @OneToMany(mappedBy = "receiver", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
   private List<Friendship> receivedRequests;
+
+  @Column(unique = true, nullable = true)
+  private String username;
 
   @Column(length = 500)
   private String bio; // "I love tennis and play on weekends!"
@@ -232,6 +234,14 @@ public class User {
 
   public void setReceivedRequests(List<Friendship> receivedRequests) {
     this.receivedRequests = receivedRequests;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
   }
 
   public String getBio() {

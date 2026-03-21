@@ -1,10 +1,14 @@
 package com.parth.sportsapp.sportsbackend.service;
 
+import com.parth.sportsapp.sportsbackend.dto.PublicProfileResponse;
+import com.parth.sportsapp.sportsbackend.dto.StreakDto;
 import com.parth.sportsapp.sportsbackend.dto.UpdateProfileRequest;
 import com.parth.sportsapp.sportsbackend.dto.UserSummaryDto;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +21,12 @@ public class UserService {
   @Autowired
   private UserRepository userRepository;
 
+  @Autowired
+  private MatchService matchService;
+
+  @Autowired
+  private PasswordEncoder passwordEncoder;
+
   /**
    * Existing search method - Updated to use the new Constructor
    */
@@ -28,6 +38,7 @@ public class UserService {
             user.getId(),
             user.getFirstName(),
             user.getLastName(),
+            user.getUsername(),
             user.getEmail(),
             user.getBio(),
             user.getProfilePictureUrl()
@@ -48,9 +59,10 @@ public class UserService {
         user.getId(),
         user.getFirstName(),
         user.getLastName(),
+        user.getUsername(),
         user.getEmail(),
-        user.getBio(),             //
-        user.getProfilePictureUrl() //
+        user.getBio(),
+        user.getProfilePictureUrl()
     );
   }
 
@@ -80,10 +92,54 @@ public class UserService {
         user.getId(),
         user.getFirstName(),
         user.getLastName(),
+        user.getUsername(),
         user.getEmail(),
         user.getBio(),
         user.getProfilePictureUrl()
     );
+  }
+
+  /**
+   * Get a user's full public profile including stats, streak and recent matches.
+   */
+  public PublicProfileResponse getPublicProfile(UUID targetUserId) {
+    User user = userRepository.findById(targetUserId)
+        .orElseThrow(() -> new RuntimeException("User not found with ID: " + targetUserId));
+
+    UserSummaryDto profile = new UserSummaryDto(
+        user.getId(),
+        user.getFirstName(),
+        user.getLastName(),
+        user.getUsername(),
+        user.getEmail(),
+        user.getBio(),
+        user.getProfilePictureUrl()
+    );
+
+    var stats = matchService.getOverallStats(targetUserId);
+    int streakCount = matchService.getCurrentStreak(targetUserId);
+    StreakDto streak = new StreakDto(streakCount > 0 ? "WIN" : "NONE", streakCount);
+    var recentMatches = matchService.allMatches(targetUserId, PageRequest.of(0, 10)).getContent();
+
+    return new PublicProfileResponse(profile, stats, streak, recentMatches);
+  }
+
+  /**
+   * Change password for a user after verifying the current password.
+   */
+  public void changePassword(UUID userId, String currentPassword, String newPassword) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+      throw new RuntimeException("Current password is incorrect");
+    }
+    if (newPassword == null || newPassword.length() < 8) {
+      throw new RuntimeException("New password must be at least 8 characters");
+    }
+
+    user.setPassword(passwordEncoder.encode(newPassword));
+    userRepository.save(user);
   }
 
   /**

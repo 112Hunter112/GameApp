@@ -345,6 +345,22 @@ public class MatchService {
   // ============================================
 
   @Transactional
+  public void cancelMatch(UUID matchId, UUID userId) {
+    Match match = matchRepository.findById(matchId)
+        .orElseThrow(() -> new RuntimeException("Match not found"));
+
+    if (!match.getCreatedByUser().getId().equals(userId)) {
+      throw new RuntimeException("Only the person who logged this match can cancel it");
+    }
+
+    if (match.getVerificationStatus() != MatchVerificationStatus.PENDING) {
+      throw new RuntimeException("Only pending matches can be cancelled");
+    }
+
+    participantsRepository.deleteAll(match.getParticipants());
+    matchRepository.delete(match);
+  }
+
   public MatchResponse verifyMatch(UUID matchId, UUID userId, boolean approve) {
     Match match = matchRepository.findById(matchId)
         .orElseThrow(() -> new RuntimeException("Match not found"));

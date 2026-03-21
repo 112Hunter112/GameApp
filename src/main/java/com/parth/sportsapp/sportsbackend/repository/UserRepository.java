@@ -26,9 +26,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   // In UserRepository.java
   Optional<User> findByVerificationToken(String token);
 
+  boolean existsByUsername(String username);
+
+  Optional<User> findByUsername(String username);
+
   @Query("SELECT u FROM User u WHERE " +
       "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-      "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%'))")
+      "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+      "LOWER(u.username) LIKE LOWER(CONCAT('%', :query, '%'))")
   List<User> searchUsers(@Param("query") String query);
 
 

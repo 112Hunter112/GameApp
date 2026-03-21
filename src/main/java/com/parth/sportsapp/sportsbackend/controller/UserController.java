@@ -1,5 +1,7 @@
 package com.parth.sportsapp.sportsbackend.controller;
 
+import com.parth.sportsapp.sportsbackend.dto.ChangePasswordRequest;
+import com.parth.sportsapp.sportsbackend.dto.PublicProfileResponse;
 import com.parth.sportsapp.sportsbackend.dto.UpdateProfileRequest;
 import com.parth.sportsapp.sportsbackend.dto.UserSummaryDto;
 import com.parth.sportsapp.sportsbackend.service.JwtUtil;
@@ -61,6 +63,12 @@ public class UserController {
   }
 
 
+  @GetMapping("/{userId}")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<PublicProfileResponse> getPublicProfile(@PathVariable UUID userId) {
+    return ResponseEntity.ok(userService.getPublicProfile(userId));
+  }
+
   @PutMapping("/me")
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<UserSummaryDto> updateProfile(
@@ -69,5 +77,16 @@ public class UserController {
 
     UUID userId = getUserIdFromToken(token);
     return ResponseEntity.ok(userService.updateProfile(userId, request));
+  }
+
+  @PutMapping("/me/password")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<String> changePassword(
+      @RequestHeader("Authorization") String token,
+      @RequestBody ChangePasswordRequest request) {
+
+    UUID userId = getUserIdFromToken(token);
+    userService.changePassword(userId, request.getCurrentPassword(), request.getNewPassword());
+    return ResponseEntity.ok("Password updated successfully");
   }
 }

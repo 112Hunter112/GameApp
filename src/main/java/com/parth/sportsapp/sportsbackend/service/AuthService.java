@@ -40,60 +40,36 @@ public class AuthService {
    */
   @Transactional
   public String register(RegisterRequest registerRequest) {
-    // user RegisterRequest DTO to take info from frontend, use RegisterRequest as param to take
 
+    if(userRepository.existsByEmail(registerRequest.getEmail())) {
+      throw new RuntimeException("Email already in use");
+    }
 
-    //process the input and check with userRepository to check if it exists
+    if(userRepository.existsByUsername(registerRequest.getUsername().toLowerCase())) {
+      throw new RuntimeException("Username already taken");
+    }
 
-   // if both email and number are correct, and then passwrd is the same
-   if(userRepository.existsByEmail(registerRequest.getEmail())) {
-     throw new RuntimeException("Email already in use");
-   }
-
-   if(userRepository.existsByPhoneNumber(registerRequest.getPhoneNumber())) {
-     throw new RuntimeException("Phone number already in use");
-   }
-
-
-    // if email and number do not exist in DB, then pass through password encoder
-   if(!registerRequest.getPassword().equals(registerRequest.getConfirmPassword())) {
-     // if the password is wrong, return null
-     throw new RuntimeException("Password does not match");
-   }
+    if(!registerRequest.getPassword().equals(registerRequest.getConfirmPassword())) {
+      throw new RuntimeException("Passwords do not match");
+    }
 
     User newUser = new User();
     newUser.setEmail(registerRequest.getEmail());
+    newUser.setUsername(registerRequest.getUsername().toLowerCase());
     newUser.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
     newUser.setFirstName(registerRequest.getFirstName());
     newUser.setLastName(registerRequest.getLastName());
-    newUser.setPhoneNumber(registerRequest.getPhoneNumber());
+    newUser.setVerified(true);
+
     if (registerRequest.getRole() != null && registerRequest.getRole().equalsIgnoreCase("VENUE_OWNER")) {
       newUser.setRole(UserRole.VENUE_OWNER);
     } else {
       newUser.setRole(UserRole.USER);
     }
 
+    userRepository.save(newUser);
 
-    // verify email
-
-    newUser.setVerified(false); // set initial verified as false so that user gets veified via email
-
-    String vToken = UUID.randomUUID().toString();
-
-    newUser.setVerificationToken(vToken);
-    newUser.setVerificationTokenExpiry(LocalDateTime.now().plusMinutes(30));
-
-
-    User savedUser = userRepository.save(newUser);
-
-
-    String link = "http://localhost:8080/api/auth/verify?token=" + vToken;
-
-    emailService.sendMailWithAttachment(registerRequest.getEmail(),
-        "verification mail for DuoSprt", link);
-
-
-    return "Verification email sent";
+    return "Account created successfully";
   }
 
   public AuthResponse login(LoginRequest request) {

@@ -152,6 +152,15 @@ public class MatchController {
   // ============================================
 
   /**
+   * Cancel a pending match (only the creator can do this)
+   */
+  @DeleteMapping("/{matchId}")
+  public ResponseEntity<Void> cancelMatch(@PathVariable UUID matchId) {
+    matchService.cancelMatch(matchId, getCurrentUserId());
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
    * Verify a match result
    * Use query param: ?approve=true OR ?approve=false
    */
