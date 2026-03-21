@@ -4,9 +4,9 @@ spring:
   application:
     name: sports-backend
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/sportsapp}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:password}
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:sportsapp}
+    username: ${PGUSER:postgres}
+    password: ${PGPASSWORD:password}
   jpa:
     hibernate:
       ddl-auto: update
