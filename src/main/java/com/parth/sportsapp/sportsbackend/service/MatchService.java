@@ -9,12 +9,13 @@ import com.parth.sportsapp.sportsbackend.model.*;
 import com.parth.sportsapp.sportsbackend.repository.MatchRepository;
 import com.parth.sportsapp.sportsbackend.repository.SportsRepository;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import com.parth.sportsapp.sportsbackend.repository.ParticipantsRepository;
@@ -37,6 +38,7 @@ public class MatchService {
   @Autowired NotificationService notificationService;
   @Autowired MatchValidator matchValidator;
   @Autowired SportsRepository sportsRepository;
+  @PersistenceContext EntityManager entityManager;
 
 
 
@@ -178,7 +180,7 @@ public class MatchService {
     p.setStatus(status); // Now valid: passing Enum to Enum
     p.setTeamName(teamName);
 
-    participantsRepository.save(p);
+    entityManager.persist(p);
   }
 
   /**
