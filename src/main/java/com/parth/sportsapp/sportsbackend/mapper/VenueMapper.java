@@ -5,10 +5,6 @@ import com.parth.sportsapp.sportsbackend.dto.VenueResponse;
 import com.parth.sportsapp.sportsbackend.dto.VenueResponse.OwnerSummaryDto;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.model.Venue;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -17,9 +13,6 @@ import java.util.stream.Collectors;
 
 @Component
 public class VenueMapper {
-
-  // PostGIS requires SRID 4326 (WGS84 coordinate system)
-  private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
   // ========== REQUEST DTO → ENTITY ==========
 
@@ -47,11 +40,8 @@ public class VenueMapper {
     // Set owner (FORCE ownership - security!)
     venue.setOwner(owner);
 
-    // Convert lat/lng to PostGIS Point
-    Point point = geometryFactory.createPoint(
-        new Coordinate(request.getLongitude(), request.getLatitude())
-    );
-    venue.setLocation(point);
+    venue.setLatitude(request.getLatitude());
+    venue.setLongitude(request.getLongitude());
 
     // New venues are active by default
     venue.setActive(true);
@@ -71,12 +61,9 @@ public class VenueMapper {
     venue.setOpeningHours(request.getOpeningHours());
     venue.setAmenities(request.getAmenities() != null ? request.getAmenities() : new ArrayList<>());
 
-    // Update location if coordinates provided
     if (request.getLatitude() != null && request.getLongitude() != null) {
-      Point point = geometryFactory.createPoint(
-          new Coordinate(request.getLongitude(), request.getLatitude())
-      );
-      venue.setLocation(point);
+      venue.setLatitude(request.getLatitude());
+      venue.setLongitude(request.getLongitude());
     }
 
     // NOTE: We DON'T update owner or isActive here - those are controlled separately
@@ -111,11 +98,8 @@ public class VenueMapper {
     response.setAmenities(safeAmenities);
     // ====================================================================
 
-    // Extract coordinates from PostGIS Point
-    if (venue.getLocation() != null) {
-      response.setLatitude(venue.getLocation().getY());   // Y = Latitude
-      response.setLongitude(venue.getLocation().getX());  // X = Longitude
-    }
+    response.setLatitude(venue.getLatitude());
+    response.setLongitude(venue.getLongitude());
 
     // Convert owner to safe DTO
     if (venue.getOwner() != null) {

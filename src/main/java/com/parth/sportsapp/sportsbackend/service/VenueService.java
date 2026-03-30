@@ -10,9 +10,6 @@ import com.parth.sportsapp.sportsbackend.model.VenueSource;
 import com.parth.sportsapp.sportsbackend.repository.SportsRepository;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
 import com.parth.sportsapp.sportsbackend.repository.VenueRepository;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,11 +58,6 @@ public class VenueService {
 @Autowired
 private UserRepository userRepository;
 
-//  @Autowired
-//  private GeometryFactory geometryFactory;
-
-  // switch this to autowire down the line
-GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
   private static final Logger logger = LoggerFactory.getLogger(VenueService.class);
 
   private static final double KM_TO_METERS = 1000.0;
@@ -211,13 +203,11 @@ GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326
     }
 
     // --- 2. LOCATION VALIDATION (Crucial for Maps) ---
-    // If the frontend didn't send coordinates, your app's "Search Nearby" will break.
-    if (venue.getLocation() == null) {
+    if (venue.getLatitude() == null || venue.getLongitude() == null) {
       throw new RuntimeException("Venue location (latitude/longitude) is required.");
     }
-    // Optional: Bounds Check (Latitude -90 to 90, Longitude -180 to 180)
-    double lat = venue.getLocation().getY();
-    double lng = venue.getLocation().getX();
+    double lat = venue.getLatitude();
+    double lng = venue.getLongitude();
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
       throw new RuntimeException("Invalid coordinates provided.");
     }
@@ -397,9 +387,9 @@ GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326
       venue.setExternalId("pin_" + lat + "_" + lng);
     }
 
-    // Set PostGIS location
     if (lat != null && lng != null) {
-      venue.setLocation(geometryFactory.createPoint(new Coordinate(lng, lat)));
+      venue.setLatitude(lat);
+      venue.setLongitude(lng);
     }
 
     // Add Default values here

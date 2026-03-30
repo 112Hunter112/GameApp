@@ -16,21 +16,21 @@ public interface VenueRepository extends JpaRepository<Venue, UUID> {
 
   @Query(value = """
         SELECT * FROM venues v
-        WHERE v.is_active = true 
-        AND ST_DWithin(
-            v.location::geography,  -- Cast column to geography for meter calculation
-            ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, 
-            :radius
-        )
+        WHERE v.is_active = true
+        AND (6371000 * acos(LEAST(1.0,
+            cos(radians(:lat)) * cos(radians(v.latitude)) *
+            cos(radians(v.longitude) - radians(:lng)) +
+            sin(radians(:lat)) * sin(radians(v.latitude))
+        ))) <= :radius
         """,
       countQuery = """
-        SELECT count(*) FROM venues v 
-        WHERE v.is_active = true 
-        AND ST_DWithin(
-            v.location::geography, 
-            ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, 
-            :radius
-        )
+        SELECT count(*) FROM venues v
+        WHERE v.is_active = true
+        AND (6371000 * acos(LEAST(1.0,
+            cos(radians(:lat)) * cos(radians(v.latitude)) *
+            cos(radians(v.longitude) - radians(:lng)) +
+            sin(radians(:lat)) * sin(radians(v.latitude))
+        ))) <= :radius
         """,
       nativeQuery = true)
   Page<Venue> findVenuesNearby(
@@ -85,15 +85,18 @@ List<Venue> findByAddressContainingIgnoreCase(String address);
 
   // checks to see if a venue exists in a certain radius
   @Query(value = """
-        SELECT * FROM venues 
-        WHERE ST_DWithin(
-            location::geography, 
-            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
-            :radiusMeters
-        )
-        AND is_managed = false
-        ORDER BY ST_Distance(location::geography, 
-                            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography)
+        SELECT * FROM venues
+        WHERE is_managed = false
+        AND (6371000 * acos(LEAST(1.0,
+            cos(radians(:latitude)) * cos(radians(latitude)) *
+            cos(radians(longitude) - radians(:longitude)) +
+            sin(radians(:latitude)) * sin(radians(latitude))
+        ))) <= :radiusMeters
+        ORDER BY (6371000 * acos(LEAST(1.0,
+            cos(radians(:latitude)) * cos(radians(latitude)) *
+            cos(radians(longitude) - radians(:longitude)) +
+            sin(radians(:latitude)) * sin(radians(latitude))
+        )))
         LIMIT 1
         """, nativeQuery = true)
   Optional<Venue> findNearbyUnmanagedVenue(
@@ -103,12 +106,12 @@ List<Venue> findByAddressContainingIgnoreCase(String address);
   );
 
   @Query(value = """
-    SELECT * FROM venues v 
-    WHERE ST_DWithin(
-        v.location::geography, 
-        ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, 
-        :radiusMeters
-    ) 
+    SELECT * FROM venues v
+    WHERE (6371000 * acos(LEAST(1.0,
+        cos(radians(:lat)) * cos(radians(v.latitude)) *
+        cos(radians(v.longitude) - radians(:lng)) +
+        sin(radians(:lat)) * sin(radians(v.latitude))
+    ))) <= :radiusMeters
     LIMIT 1
 """, nativeQuery = true)
   Optional<Venue> findFirstByLocationNear(
