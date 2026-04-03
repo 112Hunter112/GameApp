@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -27,6 +28,15 @@ public class SecurityConfig {
     return new BCryptPasswordEncoder();
   }
 
+  // Prevents Spring Boot from auto-creating an inMemoryUserDetailsManager
+  // and printing a generated security password on startup.
+  @Bean
+  public UserDetailsService userDetailsService() {
+    return username -> {
+      throw new org.springframework.security.core.userdetails.UsernameNotFoundException("JWT-only app");
+    };
+  }
+
   @Autowired
   private JwtAuthenticationFilter jwtAuthenticationFilter; // <--- Inject the filter
 
@@ -42,7 +52,14 @@ public class SecurityConfig {
         // 3. CONFIGURE URL PERMISSIONS (ORDER MATTERS!)
         .authorizeHttpRequests(auth -> auth
             // --- NEW: Allow Swagger UI & API Docs ---
-            .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+            .requestMatchers(
+                "/swagger-ui.html",
+                "/swagger-ui/**",
+                "/v3/api-docs",
+                "/v3/api-docs/**",
+                "/swagger-resources/**",
+                "/webjars/**"
+            ).permitAll()
 
             // --- NEW: Allow Public Venue Search (GET only) ---
             .requestMatchers(HttpMethod.GET, "/api/venues/search").permitAll()
