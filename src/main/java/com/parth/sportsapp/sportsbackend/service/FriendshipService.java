@@ -45,6 +45,7 @@ public class FriendshipService {
         user.getId(),
         user.getFirstName(),
         user.getLastName(),
+        user.getUsername(),
         user.getEmail(),
         user.getBio(),
         user.getProfilePictureUrl()

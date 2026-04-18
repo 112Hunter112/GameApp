@@ -1,13 +1,12 @@
 spring:
   config:
-    import: "classpath:application-secrets.properties"
+    import: optional:classpath:application-secrets.properties
   application:
     name: sports-backend
   datasource:
-    # Uses 'db' from docker-compose if available, else localhost
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/sportsapp
-    username: postgres
-    password: password
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db:5432/sportsapp}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
   jpa:
     hibernate:
       ddl-auto: update
@@ -36,5 +35,5 @@ server:
   port: 8080
 
 jwt:
-  secret: ${jwt.secret}
+  secret: ${JWT_SECRET}
   expiration: 86400000

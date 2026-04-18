@@ -21,10 +21,6 @@ WORKDIR /app
 # Notice we grab it from "--from=build"
 COPY --from=build /app/target/*.jar app.jar
 
-# Copy your secrets file
-# (Ensure this file exists in your project folder, or this line will fail)
-COPY src/main/resources/application-secrets.properties src/main/resources/application-secrets.properties
-
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-XX:+UseContainerSupport", "-jar", "app.jar"]
