@@ -5,6 +5,10 @@ import com.parth.sportsapp.sportsbackend.dto.VenueResponse;
 import com.parth.sportsapp.sportsbackend.dto.VenueResponse.OwnerSummaryDto;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.model.Venue;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -13,6 +17,16 @@ import java.util.stream.Collectors;
 
 @Component
 public class VenueMapper {
+
+  private static final GeometryFactory GEOMETRY_FACTORY =
+      new GeometryFactory(new PrecisionModel(), 4326);
+
+  private static Point toPoint(Double lat, Double lng) {
+    if (lat == null || lng == null) return null;
+    Point point = GEOMETRY_FACTORY.createPoint(new Coordinate(lng, lat));
+    point.setSRID(4326);
+    return point;
+  }
 
   // ========== REQUEST DTO → ENTITY ==========
 
@@ -40,8 +54,7 @@ public class VenueMapper {
     // Set owner (FORCE ownership - security!)
     venue.setOwner(owner);
 
-    venue.setLatitude(request.getLatitude());
-    venue.setLongitude(request.getLongitude());
+    venue.setLocation(toPoint(request.getLatitude(), request.getLongitude()));
 
     // New venues are active by default
     venue.setActive(true);
@@ -62,8 +75,7 @@ public class VenueMapper {
     venue.setAmenities(request.getAmenities() != null ? request.getAmenities() : new ArrayList<>());
 
     if (request.getLatitude() != null && request.getLongitude() != null) {
-      venue.setLatitude(request.getLatitude());
-      venue.setLongitude(request.getLongitude());
+      venue.setLocation(toPoint(request.getLatitude(), request.getLongitude()));
     }
 
     // NOTE: We DON'T update owner or isActive here - those are controlled separately
@@ -98,8 +110,9 @@ public class VenueMapper {
     response.setAmenities(safeAmenities);
     // ====================================================================
 
-    response.setLatitude(venue.getLatitude());
-    response.setLongitude(venue.getLongitude());
+    Point loc = venue.getLocation();
+    response.setLatitude(loc == null ? null : loc.getY());
+    response.setLongitude(loc == null ? null : loc.getX());
 
     // Convert owner to safe DTO
     if (venue.getOwner() != null) {

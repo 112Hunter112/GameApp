@@ -1,6 +1,6 @@
 # --- STAGE 1: Build the App (Maven) ---
 # We use a Maven image to compile the code
-FROM maven:3.8.5-openjdk-17 AS build
+FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
 # Copy only the pom.xml first (to cache dependencies)
@@ -17,9 +17,12 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# Copy the JAR file built in Stage 1
-# Notice we grab it from "--from=build"
-COPY --from=build /app/target/*.jar app.jar
+# Run as non-root for defense-in-depth
+RUN adduser -D spring
+USER spring
+
+# Copy the JAR file built in Stage 1 (avoid *.jar which also matches .jar.original)
+COPY --from=build /app/target/SportsBackend-*.jar app.jar
 
 EXPOSE 8080
 

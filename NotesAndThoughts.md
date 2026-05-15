@@ -65,13 +65,20 @@ When user picks "Madison Tennis Center" from dropdown:
 **POST /api/matches/manual**
 ```json
 {
-  "opponentIds": ["..."],
-  "sport": "TENNIS",
-  "venueName": "Madison Tennis Center",
-  "venueAddress": "123 Sport Ln, Madison, WI",
-  "venueLat": 43.0731,
-  "venueLng": -89.4012,
-  "externalVenueId": "25482910"
+ "opponentIds": ["..."],
+ "sport": "TENNIS",
+ "date": "2026-05-20T14:30:00",  // <--- REQUIRED
+ "score": "6-4, 6-2",            // <--- REQUIRED
+ "winningTeam": "TEAM_A",        // <--- REQUIRED
+
+ "venueName": "Madison Tennis Center",
+ "venueAddress": "123 Sport Ln, Madison, WI",
+ "venueLat": 43.0731,
+ "venueLng": -89.4012,
+ "externalVenueId": "25482910",
+
+ "isAchievement": true,                // <--- NEW FEATURE
+ "achievementTitle": "Won 1st Place"   // <--- NEW FEATURE
 }
 ```
 
@@ -84,11 +91,18 @@ When user drops a pin on a random field:
 {
   "opponentIds": ["..."],
   "sport": "SOCCER",
+ "date": "2026-05-20T14:30:00",  // <--- REQUIRED
+ "score": "6-4, 6-2",            // <--- REQUIRED
+ "winningTeam": "TEAM_A",        // <--- REQUIRED
+ 
   "venueName": "Community Field",
   "venueAddress": "Custom Location",
   "venueLat": 43.1000,
   "venueLng": -89.5000,
-  "externalVenueId": null
+  "externalVenueId": null,
+
+ "isAchievement": true,                // <--- NEW FEATURE
+ "achievementTitle": "Won 1st Place"   // <--- NEW FEATURE
 }
 ```
 
