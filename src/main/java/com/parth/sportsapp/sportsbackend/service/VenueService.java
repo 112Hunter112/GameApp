@@ -1,6 +1,7 @@
 package com.parth.sportsapp.sportsbackend.service;
 
 
+import com.parth.sportsapp.sportsbackend.dto.VenueNearbyResponse;
 import com.parth.sportsapp.sportsbackend.dto.VenueRequest;
 import com.parth.sportsapp.sportsbackend.dto.VenueResponse;
 import com.parth.sportsapp.sportsbackend.mapper.VenueMapper;
@@ -492,6 +493,19 @@ private UserRepository userRepository;
 
     // Exact substring match (e.g. "Rajesh Tennis" contains "Rajesh")
     return s1.contains(s2) || s2.contains(s1);
+  }
+
+
+  @Transactional(readOnly = true)
+  public Page<VenueNearbyResponse> findNearby(double latitude, double longitude, double radiusMeters, Pageable pageable) {
+    if (latitude  < -90  || latitude  > 90)  throw new IllegalArgumentException("latitude out of range");
+    if (longitude < -180 || longitude > 180) throw new IllegalArgumentException("longitude out of range");
+    if (radiusMeters <= 0)                   throw new IllegalArgumentException("radius must be positive");
+    if (radiusMeters > 50_000) radiusMeters = 50_000;   // cap at 50 km
+
+    return venueRepository
+        .findNearbyWithDistance(latitude, longitude, radiusMeters, pageable)
+        .map(venueMapper::toNearbyResponse);
   }
 
 }

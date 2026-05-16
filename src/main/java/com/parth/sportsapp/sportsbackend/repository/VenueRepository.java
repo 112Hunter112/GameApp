@@ -132,4 +132,43 @@ List<Venue> findByAddressContainingIgnoreCase(String address);
 
   boolean existsByExternalId(String externalId);
 
+  // TODO : A query that finds the distance adn returns data in VenueDistanceProjection format
+  //select id, name and distance. From venue, where distance  is less than equal to user specified
+  // range from user start, location exists
+  @Query(value = """
+    SELECT v.id AS id,
+           v.name AS name,
+           ST_Distance(
+               v.location::geography,
+               ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+           ) AS distance_meters
+    FROM venues v
+    WHERE v.is_active = true
+      AND v.location IS NOT NULL
+      AND ST_DWithin(
+          v.location::geography,
+          ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+          :radiusMeters
+      )
+    ORDER BY distance_meters ASC, v.id ASC
+    """,
+      countQuery = """
+    SELECT COUNT(*)
+    FROM venues v
+    WHERE v.is_active = true
+      AND v.location IS NOT NULL
+      AND ST_DWithin(
+          v.location::geography,
+          ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+          :radiusMeters
+      )
+    """,
+      nativeQuery = true)
+  Page<VenueDistanceProjection> findNearbyWithDistance(
+      @Param("latitude")     double latitude,
+      @Param("longitude")    double longitude,
+      @Param("radiusMeters") double radiusMeters,
+      Pageable pageable
+  );
+
 }

@@ -1,11 +1,14 @@
 package com.parth.sportsapp.sportsbackend.controller;
 
+import com.parth.sportsapp.sportsbackend.dto.VenueNearbyResponse;
 import com.parth.sportsapp.sportsbackend.dto.VenueRequest;
 import com.parth.sportsapp.sportsbackend.dto.VenueResponse;
 import com.parth.sportsapp.sportsbackend.model.Venue;
 import com.parth.sportsapp.sportsbackend.service.JwtUtil;
 import com.parth.sportsapp.sportsbackend.service.VenueService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -175,4 +178,13 @@ public class VenueController {
     return ResponseEntity.ok(venue);
   }
 
+  @GetMapping("/nearby")
+  public Page<VenueNearbyResponse> findNearby(
+      @RequestParam @Min(-90)  @Max(90)  double latitude,
+      @RequestParam @Min(-180) @Max(180) double longitude,
+      @RequestParam(defaultValue = "5000") @Min(1) double radiusMeters,
+      Pageable pageable
+  ) {
+    return venueService.findNearby(latitude, longitude, radiusMeters, pageable);
+  }
 }

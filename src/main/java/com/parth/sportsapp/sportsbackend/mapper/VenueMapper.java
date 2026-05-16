@@ -1,10 +1,12 @@
 package com.parth.sportsapp.sportsbackend.mapper;
 
+import com.parth.sportsapp.sportsbackend.dto.VenueNearbyResponse;
 import com.parth.sportsapp.sportsbackend.dto.VenueRequest;
 import com.parth.sportsapp.sportsbackend.dto.VenueResponse;
 import com.parth.sportsapp.sportsbackend.dto.VenueResponse.OwnerSummaryDto;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.model.Venue;
+import com.parth.sportsapp.sportsbackend.repository.VenueDistanceProjection;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -136,5 +138,14 @@ public class VenueMapper {
     return venues.stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
+  }
+
+  public VenueNearbyResponse toNearbyResponse(VenueDistanceProjection p) {
+    if (p == null) return null;
+    return new VenueNearbyResponse(
+        p.getId(),
+        p.getName(),
+        p.getDistanceMeters()
+    );
   }
 }
