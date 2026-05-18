@@ -1,0 +1,38 @@
+# Caddy reverse proxy for the Sportsman backend.
+# Automatic Let's Encrypt TLS certs — Caddy handles ACME for you,
+# as long as ports 80 and 443 are open on the droplet and DNS
+# points at the droplet's public IP.
+#
+# Replace the hostname below if your Duck DNS subdomain changes.
+
+sportsmanapi.duckdns.org {
+    # Reverse-proxy everything to the Spring Boot app over the docker network.
+    reverse_proxy app:8080
+
+    # Security headers
+    header {
+        # Force HTTPS for the next year, include subdomains
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        # Prevent MIME sniffing
+        X-Content-Type-Options "nosniff"
+        # Don't leak referer
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove server identification
+        -Server
+    }
+
+    # Compress responses
+    encode zstd gzip
+
+    # Reasonable logs
+    log {
+        output stdout
+        format console
+    }
+}
+
+# Optional: redirect bare IP / unknown hosts to a 444 (silent close)
+# so port scanners don't get a useful response.
+:80 {
+    respond 444
+}

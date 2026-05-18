@@ -1,0 +1,85 @@
+# Production docker-compose for Sportsman backend.
+# Use together with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Hardening vs. the dev compose:
+#   - Jenkins service removed entirely (NEVER run on a public droplet).
+#   - Postgres port is NOT published on the host (no `5432:5432`). The DB is
+#     reachable only from inside the docker network, by the app container.
+#     This is the exact change that prevents the previous cryptojacking attack.
+#   - All secrets come from a .env file (env_file:), not hard-coded.
+#   - The app container is NOT published on the host either — Caddy proxies
+#     to it over the docker network. UFW + Caddy form the only ingress.
+#   - Internal docker network ("backend") is isolated.
+#   - restart: always on all services.
+
+services:
+  db:
+    image: postgis/postgis:15-3.4
+    container_name: sports-db
+    env_file: .env
+    environment:
+      POSTGRES_DB: sportsapp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # NO `ports:` block. This is the most important line in this file —
+    # the absence of a published port is what keeps the DB private.
+    expose:
+      - "5432"   # only visible to other containers on the same network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sportsapp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: sports-app
+    env_file: .env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/sportsapp
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      EMAIL_USERNAME: ${EMAIL_USERNAME}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+    # No host port publish — only Caddy talks to this container.
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: always
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: sports-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"     # for HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - backend
+    restart: always
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
