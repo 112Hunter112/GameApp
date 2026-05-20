@@ -46,7 +46,6 @@ public class User {
   @Enumerated(EnumType.STRING) // tells the DB to go through the enumerated class
   @Column(nullable = false)
   private UserRole role = UserRole.USER; // current defaultis USER type, but look to modify this
-  // todo: learn to modify this so it takes the VENDER and ADMIN role as well
 
 
   @UpdateTimestamp

@@ -4,3 +4,6 @@ outputwed as pageable format in VenueRepository, then service layer checks logic
 not and are we recving the right inputs from the user such as maxDistance etc, adn if correct 
 data gets mapped from VenueDistanceProjection format to VenueNearbyResponse DTO and then goes to 
 then when we call the APi through controller all this happens
+
+
+TODO : REVERt Line 65 on SecurityConfig file as 2 APi are opne to publci wihtout JWT

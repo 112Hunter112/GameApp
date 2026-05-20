@@ -26,9 +26,8 @@ public interface CourtRepository extends JpaRepository<Courts, UUID> {
   List<Courts> findByVenue_Id(UUID Id);
 
 
-  List<Courts> findByIsIndoorTrue(boolean isIndoor);
+  List<Courts> findByIsIndoorTrue();
 
-  List<Courts> findByIsIndoorFalse(boolean isIndoor);
 
   List<Courts> findByHourlyRateLessThanEqual(BigDecimal maxPrice);
 

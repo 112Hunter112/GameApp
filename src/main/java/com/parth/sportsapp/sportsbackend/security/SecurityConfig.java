@@ -62,7 +62,8 @@ public class SecurityConfig {
             ).permitAll()
 
             // --- NEW: Allow Public Venue Search (GET only) ---
-            .requestMatchers(HttpMethod.GET, "/api/venues/search").permitAll()
+            // TODO REVERT these soAPI are not open on the web
+            .requestMatchers(HttpMethod.GET, "/api/venues/search", "/api/venues/nearby").permitAll()
 
             // Public Auth endpoints
             .requestMatchers("/api/auth/**").permitAll()
