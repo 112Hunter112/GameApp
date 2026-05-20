@@ -28,7 +28,7 @@ public class UserPreference {
   private String proficiencyLevel;
 
   @Column(name = "elo_rating", nullable = false)
-  private Integer eloRating = 1200;
+  private Integer eloRating;
 
   @Column(name = "matches_played", nullable = false)
   private Integer matchesPlayed = 0;
