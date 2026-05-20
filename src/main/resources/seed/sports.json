@@ -1,0 +1,146 @@
+[
+  {
+    "name": "Tennis",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "SETS",
+    "iconUrl": null,
+    "description": "Singles or doubles racquet sport on a hard, clay, or grass court."
+  },
+  {
+    "name": "Badminton",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Indoor shuttlecock racquet sport, played as singles or doubles."
+  },
+  {
+    "name": "Squash",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Fast-paced racquet sport played in an enclosed four-walled court."
+  },
+  {
+    "name": "Table Tennis",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Indoor paddle sport played across a table with a small lightweight ball."
+  },
+  {
+    "name": "Pickleball",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Paddle sport combining elements of tennis, badminton, and ping pong."
+  },
+  {
+    "name": "Padel",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "SETS",
+    "iconUrl": null,
+    "description": "Racquet sport played in doubles inside a glass-walled court."
+  },
+  {
+    "name": "Basketball",
+    "minPlayers": 2,
+    "maxPlayers": 10,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Full-court or half-court ball sport; commonly played 3v3 or 5v5."
+  },
+  {
+    "name": "Volleyball",
+    "minPlayers": 4,
+    "maxPlayers": 12,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Net sport played indoors or on sand with two opposing teams."
+  },
+  {
+    "name": "Soccer",
+    "minPlayers": 2,
+    "maxPlayers": 22,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Field sport played with two teams; goals score one point each."
+  },
+  {
+    "name": "Futsal",
+    "minPlayers": 4,
+    "maxPlayers": 10,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Five-a-side indoor variant of soccer, played on a hard court."
+  },
+  {
+    "name": "Cricket",
+    "minPlayers": 4,
+    "maxPlayers": 22,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Bat-and-ball sport between two teams of eleven, played on a pitch."
+  },
+  {
+    "name": "Baseball",
+    "minPlayers": 4,
+    "maxPlayers": 18,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Bat-and-ball sport played on a diamond between two teams of nine."
+  },
+  {
+    "name": "Field Hockey",
+    "minPlayers": 4,
+    "maxPlayers": 22,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Team sport played on grass or turf with curved sticks and a hard ball."
+  },
+  {
+    "name": "Ultimate Frisbee",
+    "minPlayers": 4,
+    "maxPlayers": 14,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Non-contact team sport played with a flying disc on a rectangular field."
+  },
+  {
+    "name": "Golf",
+    "minPlayers": 1,
+    "maxPlayers": 4,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Course-based sport played with clubs; lower stroke totals win."
+  },
+  {
+    "name": "Running",
+    "minPlayers": 1,
+    "maxPlayers": 50,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "Solo or group endurance activity timed across set distances."
+  },
+  {
+    "name": "Swimming",
+    "minPlayers": 1,
+    "maxPlayers": 50,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "Pool-based timed sport across multiple stroke and distance categories."
+  },
+  {
+    "name": "Cycling",
+    "minPlayers": 1,
+    "maxPlayers": 50,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "Road or track endurance sport timed across a set route or distance."
+  }
+]
