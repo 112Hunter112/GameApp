@@ -104,6 +104,10 @@ public class User {
   @Column(nullable = false)
   private boolean pushNotificationsEnabled = true;
 
+  /** Google's stable user identifier (the "sub" claim). Null if user signed up with email. */
+  @Column(name = "google_id", unique = true)
+  private String googleId;
+
   // 1. Existing mapping (Keep this)
   // Maps to: private User createdByUser; in Match.java
   @OneToMany(mappedBy = "createdByUser", fetch = FetchType.LAZY)
@@ -281,6 +285,14 @@ public class User {
 
   public void setExpoPushToken(String expoPushToken) {
     this.expoPushToken = expoPushToken;
+  }
+
+  public String getGoogleId() {
+    return googleId;
+  }
+
+  public void setGoogleId(String googleId) {
+    this.googleId = googleId;
   }
 
   public boolean isEmailNotificationsEnabled() {

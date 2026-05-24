@@ -30,6 +30,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   Optional<User> findByUsername(String username);
 
+  Optional<User> findByGoogleId(String googleId);
+
   @Query("SELECT u FROM User u WHERE " +
       "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
       "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +

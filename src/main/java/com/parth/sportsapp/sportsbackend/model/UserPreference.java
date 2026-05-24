@@ -67,6 +67,22 @@ public class UserPreference {
   @Column(name = "is_primary_sport", nullable = false)
   private Boolean isPrimarySport = false;
 
+  // --- Home-page recommendation fields ---
+  // (Time-of-day / intensity / looking-for were intentionally removed:
+  //  bookings handle time, and the hidden Elo + match history conveys skill.)
+
+  @Column(name = "available_weekdays", nullable = false)
+  private Boolean availableWeekdays = true;
+
+  @Column(name = "available_weekends", nullable = false)
+  private Boolean availableWeekends = true;
+
+  @Column(name = "notification_radius_meters")
+  private Integer notificationRadiusMeters;
+
+  @Column(name = "last_active_at")
+  private LocalDateTime lastActiveAt;
+
   @CreationTimestamp
   @Column(name = "created_at", updatable = false)
   private LocalDateTime createdAt;
@@ -209,6 +225,38 @@ public class UserPreference {
 
   public void setIsPrimarySport(Boolean isPrimarySport) {
     this.isPrimarySport = isPrimarySport;
+  }
+
+  public Boolean getAvailableWeekdays() {
+    return availableWeekdays;
+  }
+
+  public void setAvailableWeekdays(Boolean availableWeekdays) {
+    this.availableWeekdays = availableWeekdays;
+  }
+
+  public Boolean getAvailableWeekends() {
+    return availableWeekends;
+  }
+
+  public void setAvailableWeekends(Boolean availableWeekends) {
+    this.availableWeekends = availableWeekends;
+  }
+
+  public Integer getNotificationRadiusMeters() {
+    return notificationRadiusMeters;
+  }
+
+  public void setNotificationRadiusMeters(Integer notificationRadiusMeters) {
+    this.notificationRadiusMeters = notificationRadiusMeters;
+  }
+
+  public LocalDateTime getLastActiveAt() {
+    return lastActiveAt;
+  }
+
+  public void setLastActiveAt(LocalDateTime lastActiveAt) {
+    this.lastActiveAt = lastActiveAt;
   }
 
   public LocalDateTime getCreatedAt() {
