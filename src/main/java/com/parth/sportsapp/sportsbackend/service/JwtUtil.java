@@ -123,11 +123,15 @@ public class JwtUtil {
 
   /** True if signature is valid, subject matches, and the token is not expired. */
   public boolean validateToken(String token, String email) {
+    if (token == null || token.isBlank() || email == null) {
+      return false;
+    }
     try {
       final String tokenEmail = extractEmail(token);
       return tokenEmail != null && tokenEmail.equals(email) && !isTokenExpired(token);
-    } catch (JwtException e) {
-      // Invalid signature, malformed token, etc. — never log the token itself.
+    } catch (JwtException | IllegalArgumentException e) {
+      // Invalid signature, malformed/garbage token, null-or-empty inputs from the library.
+      // Never log the token itself.
       log.debug("Token validation failed: {}", e.getClass().getSimpleName());
       return false;
     }
