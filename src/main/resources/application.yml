@@ -35,14 +35,48 @@ spring:
           starttls:
             enable: true
 
+  # ASVS V13.1 — reject unknown JSON properties so a client cannot smuggle
+  # extra fields into request bodies (mass-assignment defense).
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+
+  # DoS guard: cap multipart upload sizes (ASVS V12.1 / V13.x).
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
 server:
   port: 8080
+  # ASVS V14.3 — do not advertise the server/framework version.
+  server-header: ""
+  # DoS guard: cap request line / header / POST body sizes.
+  max-http-request-header-size: 16KB
+  tomcat:
+    max-http-form-post-size: 2MB
+    max-swallow-size: 2MB
   error:
     # Never leak stack traces or internal exception messages to clients.
     include-stacktrace: never
     include-message: never
     include-binding-errors: never
     include-exception: false
+
+# ASVS V14.3 — Actuator: expose only health, hide everything else,
+# and never show full health details to anonymous callers.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+  info:
+    env:
+      enabled: false
 
 # CORS: comma-separated explicit origins. NEVER use "*" in production.
 app:

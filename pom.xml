@@ -162,6 +162,30 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+
+            <!--
+              OWASP Dependency-Check (ASVS V14.2 - vulnerable & outdated components).
+              Scans all dependencies for known CVEs.
+              Run on demand:   ./mvnw org.owasp:dependency-check-maven:check
+              Or wire into CI. It is NOT bound to a build phase here so normal
+              `mvn package` stays fast; the first run downloads the CVE database.
+              Build fails if any dependency has a CVE with CVSS >= 8 (high/critical).
+            -->
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>10.0.4</version>
+                <configuration>
+                    <failBuildOnCVSS>8</failBuildOnCVSS>
+                    <formats>
+                        <format>HTML</format>
+                        <format>JSON</format>
+                    </formats>
+                    <suppressionFiles>
+                        <suppressionFile>owasp-suppressions.xml</suppressionFile>
+                    </suppressionFiles>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
