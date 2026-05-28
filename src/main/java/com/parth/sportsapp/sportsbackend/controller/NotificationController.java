@@ -35,7 +35,7 @@ public class NotificationController {
   // 2. Mark as Read (When they click it)
   @PutMapping("/{id}/read")
   public ResponseEntity<Void> markAsRead(@PathVariable UUID id) {
-    notificationService.markAsRead(id);
+    notificationService.markAsRead(id, getCurrentUserId());
     return ResponseEntity.ok().build();
   }
 // todo fix this method

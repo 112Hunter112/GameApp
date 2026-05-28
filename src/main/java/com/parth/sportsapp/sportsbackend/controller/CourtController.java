@@ -113,12 +113,16 @@ public class CourtController {
 
   private UUID getUserIdFromToken(String authHeader) {
     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-      throw new RuntimeException("Invalid Authorization Header");
-      // GlobalExceptionHandler will catch this
+      throw new com.parth.sportsapp.sportsbackend.exception.UnauthorizedException(
+          "Missing or malformed Authorization header");
     }
-    String jwtToken = authHeader.substring(7);
-    String userIdString = jwtUtil.extractUserId(jwtToken);
-    return UUID.fromString(userIdString);
+    try {
+      String jwtToken = authHeader.substring(7);
+      String userIdString = jwtUtil.extractUserId(jwtToken);
+      return UUID.fromString(userIdString);
+    } catch (IllegalArgumentException e) {
+      throw new com.parth.sportsapp.sportsbackend.exception.UnauthorizedException("Invalid token");
+    }
   }
 
 
