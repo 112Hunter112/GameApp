@@ -1,12 +1,14 @@
 package com.parth.sportsapp.sportsbackend.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,15 +19,24 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
+  /**
+   * Comma-separated allowed origins from env (e.g. "https://app.example.com,https://staging.example.com").
+   * Defaults to typical local dev origins. NEVER deploy with the default in prod.
+   */
+  @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:8081,http://localhost:19006}")
+  private String allowedOriginsRaw;
+
   @Bean
   public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
+    // BCrypt strength 12 = ~250ms/hash on a modern server. Slows down brute force.
+    return new BCryptPasswordEncoder(12);
   }
 
   // Prevents Spring Boot from auto-creating an inMemoryUserDetailsManager
@@ -38,20 +49,31 @@ public class SecurityConfig {
   }
 
   @Autowired
-  private JwtAuthenticationFilter jwtAuthenticationFilter; // <--- Inject the filter
+  private JwtAuthenticationFilter jwtAuthenticationFilter;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
-        // 1. DISABLE CSRF (for REST APIs)
+        // CSRF: REST + JWT does not need CSRF tokens (no browser-session cookies trusted for auth).
         .csrf(csrf -> csrf.disable())
 
-        // 2. ENABLE CORS (allow requests from frontend)
+        // CORS handled centrally below.
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-        // 3. CONFIGURE URL PERMISSIONS (ORDER MATTERS!)
+        // No sessions — every request is authenticated solely by its JWT.
+        // Closes the door on session fixation and cookie-based replay.
+        .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+        // Security response headers (frame-deny prevents clickjacking, etc.).
+        .headers(headers -> headers
+            .frameOptions(frame -> frame.deny())
+            .contentTypeOptions(ct -> {})
+            .xssProtection(xss -> {})
+            .cacheControl(cc -> {})
+        )
+
         .authorizeHttpRequests(auth -> auth
-            // --- NEW: Allow Swagger UI & API Docs ---
+            // Swagger / OpenAPI docs
             .requestMatchers(
                 "/swagger-ui.html",
                 "/swagger-ui/**",
@@ -61,45 +83,48 @@ public class SecurityConfig {
                 "/webjars/**"
             ).permitAll()
 
-            // --- NEW: Allow Public Venue Search (GET only) ---
-            .requestMatchers(HttpMethod.GET, "/api/venues/search").permitAll()
+            // Actuator health is public for load balancers; everything else under /actuator stays auth'd.
+            .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
 
-            // Public Auth endpoints
+            // Public discovery endpoints
+            .requestMatchers(HttpMethod.GET, "/api/venues/search", "/api/venues/nearby").permitAll()
+
+            // Public auth endpoints (login, register, verify)
             .requestMatchers("/api/auth/**").permitAll()
             .requestMatchers("/hello").permitAll()
 
-            // ALL OTHER REQUESTS
-            // currently allowing all for dev, but standard security is: .anyRequest().authenticated()
             .anyRequest().authenticated()
         )
 
-        // 4. DISABLE form login and HTTP basic
         .formLogin(login -> login.disable())
         .httpBasic(basic -> basic.disable())
 
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-
-
     return http.build();
   }
 
-  // CORS Configuration (allows frontend to call backend)
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
 
-    // Allow requests from anywhere (FOR DEVELOPMENT ONLY!)
-    configuration.setAllowedOrigins(Arrays.asList("*"));
+    List<String> origins = Arrays.stream(allowedOriginsRaw.split(","))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .toList();
 
-    // Allow all HTTP methods
+    // Reject wildcard origins outright. If someone sets allowed-origins=* we still refuse.
+    if (origins.contains("*")) {
+      throw new IllegalStateException(
+          "app.cors.allowed-origins must not be '*'. Set explicit origins.");
+    }
+
+    configuration.setAllowedOrigins(origins);
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
-    // Allow all headers
-    configuration.setAllowedHeaders(Arrays.asList("*"));
-
-    // Allow credentials must be false when origin is "*"
-    configuration.setAllowCredentials(false);
+    configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With"));
+    configuration.setExposedHeaders(List.of("Authorization"));
+    configuration.setAllowCredentials(true);
+    configuration.setMaxAge(3600L);
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);

@@ -1,24 +1,31 @@
 package com.parth.sportsapp.sportsbackend.service;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
 
 import java.security.Key;
-import java.util.*;
-import java.security.SecureRandom;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
-// use this to create the JWT token after the sign in
 @Service
 public class JwtUtil {
 
+  private static final Logger log = LoggerFactory.getLogger(JwtUtil.class);
+
+  /** Minimum bytes for HS256. 32 bytes = 256 bits. */
+  private static final int MIN_KEY_BYTES = 32;
 
   @Value("${jwt.secret}")
   private String SECRET_KEY;
@@ -26,35 +33,59 @@ public class JwtUtil {
   @Value("${jwt.expiration}")
   private long EXPIRATION_TIME;
 
-  public String generateToken(String email, UUID userId, String role) {
-    Map<String, Object> claims = new HashMap<String, Object>(); // this is to store extra info,
-    // such as postion of user and other metadata, so we don't retrieve from db
-    claims.put("userId", userId.toString());
+  private Key signingKey;
 
+  /**
+   * Validated at boot. Fails fast if the secret is missing, malformed, or too
+   * short to be secure. Prevents a silent vulnerability where someone deploys
+   * with a 4-byte demo key.
+   */
+  @PostConstruct
+  void init() {
+    if (SECRET_KEY == null || SECRET_KEY.isBlank()) {
+      throw new IllegalStateException("jwt.secret is not configured");
+    }
+    byte[] keyBytes;
+    try {
+      keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+    } catch (Exception e) {
+      throw new IllegalStateException("jwt.secret must be Base64 encoded", e);
+    }
+    if (keyBytes.length < MIN_KEY_BYTES) {
+      throw new IllegalStateException(
+          "jwt.secret must decode to at least " + MIN_KEY_BYTES + " bytes (256 bits) for HS256");
+    }
+    if (EXPIRATION_TIME <= 0) {
+      throw new IllegalStateException("jwt.expiration must be a positive number of milliseconds");
+    }
+    this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+    log.info("JWT signing key initialized ({} bits, expiry {} ms)", keyBytes.length * 8, EXPIRATION_TIME);
+  }
+
+  public String generateToken(String email, UUID userId, String role) {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("userId", userId.toString());
     claims.put("role", "ROLE_" + role);
     return createToken(claims, email);
   }
 
-  public String extractUserId(String token) {
-    return extractClaim(token, claims -> claims.get("userId", String.class));
-  }
-
   public String createToken(Map<String, Object> claims, String subject) {
-
     return Jwts.builder()
-        .setClaims(claims).setSubject(subject)
+        .setClaims(claims)
+        .setSubject(subject)
         .setIssuedAt(new Date(System.currentTimeMillis()))
-        .setExpiration(new Date(System.currentTimeMillis()+ EXPIRATION_TIME))
-        .signWith(getSigningKey(),SignatureAlgorithm.HS256) // 256-bit encryption
+        .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+        .signWith(signingKey, SignatureAlgorithm.HS256)
         .compact();
   }
 
-  // I need to turn the secret key using hashing and other tools
+  /** Kept for any external callers — uses the cached signing key. */
   public Key getSigningKey() {
+    return signingKey;
+  }
 
-    //convert SECRET_KEY to bytes and also hash it
-    byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
-    return Keys.hmacShaKeyFor(keyBytes);
+  public String extractUserId(String token) {
+    return extractClaim(token, claims -> claims.get("userId", String.class));
   }
 
   public String extractRole(String token) {
@@ -76,20 +107,33 @@ public class JwtUtil {
 
   private Claims extractAllClaims(String token) {
     return Jwts.parserBuilder()
-        .setSigningKey(getSigningKey())
+        .setSigningKey(signingKey)
         .build()
         .parseClaimsJws(token)
         .getBody();
   }
 
-  private Boolean isTokenExpired(String token) {
-    return extractExpiration(token).before(new Date());
+  private boolean isTokenExpired(String token) {
+    try {
+      return extractExpiration(token).before(new Date());
+    } catch (JwtException e) {
+      return true;
+    }
   }
 
-  // 9. Validate token (check email matches and not expired)
-  public Boolean validateToken(String token, String email) {
-    final String tokenEmail = extractEmail(token);
-    return (tokenEmail.equals(email) && !isTokenExpired(token));
+  /** True if signature is valid, subject matches, and the token is not expired. */
+  public boolean validateToken(String token, String email) {
+    if (token == null || token.isBlank() || email == null) {
+      return false;
+    }
+    try {
+      final String tokenEmail = extractEmail(token);
+      return tokenEmail != null && tokenEmail.equals(email) && !isTokenExpired(token);
+    } catch (JwtException | IllegalArgumentException e) {
+      // Invalid signature, malformed/garbage token, null-or-empty inputs from the library.
+      // Never log the token itself.
+      log.debug("Token validation failed: {}", e.getClass().getSimpleName());
+      return false;
+    }
   }
-
 }

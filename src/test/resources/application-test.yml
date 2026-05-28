@@ -1,0 +1,25 @@
+# Test-profile defaults. Picked up automatically when @ActiveProfiles("test").
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  mail:
+    host: localhost
+    port: 25
+    username: test
+    password: test
+
+# JWT secret for tests — Base64 of 32 zero bytes, never used outside tests.
+jwt:
+  secret: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  expiration: 3600000
+
+# Google Sign-In not configured in tests; the service will refuse calls.
+google:
+  oauth:
+    client-ids:
+
+app:
+  cors:
+    allowed-origins: http://localhost:3000

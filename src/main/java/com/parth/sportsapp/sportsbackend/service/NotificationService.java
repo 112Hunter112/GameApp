@@ -1,5 +1,7 @@
 package com.parth.sportsapp.sportsbackend.service;
 
+import com.parth.sportsapp.sportsbackend.exception.ForbiddenException;
+import com.parth.sportsapp.sportsbackend.exception.NotFoundException;
 import com.parth.sportsapp.sportsbackend.model.Notification;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.repository.NotificationRepository;
@@ -39,12 +41,23 @@ public class NotificationService {
 
   /**
    * Marks a notification as read when the user clicks it.
+   *
+   * @param notificationId the notification to mark
+   * @param currentUserId  the authenticated caller — must own the notification
+   * @throws NotFoundException  if the notification does not exist
+   * @throws ForbiddenException if the notification belongs to a different user (IDOR guard)
    */
-  public void markAsRead(UUID notificationId) {
-    notificationRepository.findById(notificationId).ifPresent(n -> {
-      n.setRead(true);
-      notificationRepository.save(n);
-    });
+  public void markAsRead(UUID notificationId, UUID currentUserId) {
+    Notification n = notificationRepository.findById(notificationId)
+        .orElseThrow(() -> new NotFoundException("Notification not found"));
+
+    if (n.getRecipient() == null || !n.getRecipient().getId().equals(currentUserId)) {
+      // Do not reveal whether the notification exists for another user.
+      throw new ForbiddenException("You cannot modify this notification");
+    }
+
+    n.setRead(true);
+    notificationRepository.save(n);
   }
 
 

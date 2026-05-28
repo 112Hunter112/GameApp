@@ -1,30 +1,27 @@
 package com.parth.sportsapp.sportsbackend.controller;
 
 import com.parth.sportsapp.sportsbackend.dto.AuthResponse;
+import com.parth.sportsapp.sportsbackend.dto.GoogleLoginRequest;
 import com.parth.sportsapp.sportsbackend.dto.LoginRequest;
 import com.parth.sportsapp.sportsbackend.dto.RegisterRequest;
 import com.parth.sportsapp.sportsbackend.service.AuthService;
+import com.parth.sportsapp.sportsbackend.service.GoogleAuthService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.net.ssl.HttpsURLConnection;
-
+// CORS is handled centrally in SecurityConfig (app.cors.allowed-origins).
+// Do NOT add @CrossOrigin here — it would override the central policy.
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")  // Explicit, but still allows all // this allows requesats from
-// react native app
-
-/**
- * down the line wew can use @CrossOrigin(origins = "http://localhost:19006")  // React Native dev server
- * // OR configure globally in SecurityConfig
- */
 public class AuthController {
 
   @Autowired
   private AuthService authService;
+
+  @Autowired
+  private GoogleAuthService googleAuthService;
 
 
 
@@ -75,5 +72,18 @@ public class AuthController {
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }
+  }
+
+  /**
+   * Google Sign-In. The mobile app obtains a Google ID token via the Google Sign-In
+   * SDK and POSTs it here. The backend verifies the signature against Google's keys,
+   * finds or creates the matching user, and returns our own JWT.
+   *
+   * Body: { "idToken": "<google id token>" }
+   */
+  @PostMapping("/google")
+  public ResponseEntity<AuthResponse> loginWithGoogle(
+      @Valid @RequestBody GoogleLoginRequest request) {
+    return ResponseEntity.ok(googleAuthService.loginWithGoogle(request.getIdToken()));
   }
 }

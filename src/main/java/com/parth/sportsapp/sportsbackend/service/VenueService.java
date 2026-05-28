@@ -1,6 +1,7 @@
 package com.parth.sportsapp.sportsbackend.service;
 
 
+import com.parth.sportsapp.sportsbackend.dto.VenueNearbyResponse;
 import com.parth.sportsapp.sportsbackend.dto.VenueRequest;
 import com.parth.sportsapp.sportsbackend.dto.VenueResponse;
 import com.parth.sportsapp.sportsbackend.mapper.VenueMapper;
@@ -10,6 +11,10 @@ import com.parth.sportsapp.sportsbackend.model.VenueSource;
 import com.parth.sportsapp.sportsbackend.repository.SportsRepository;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
 import com.parth.sportsapp.sportsbackend.repository.VenueRepository;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +72,16 @@ private UserRepository userRepository;
   private static final double MAX_SEARCH_RADIUS_M = 200.0;
 
   private static final String SYSTEM_ADMIN_EMAIL = "public_venues@sportsapp.com";
+
+  private static final GeometryFactory GEOMETRY_FACTORY =
+      new GeometryFactory(new PrecisionModel(), 4326);
+
+  private static Point toPoint(Double lat, Double lng) {
+    if (lat == null || lng == null) return null;
+    Point point = GEOMETRY_FACTORY.createPoint(new Coordinate(lng, lat));
+    point.setSRID(4326);
+    return point;
+  }
 
 
 
@@ -203,11 +218,12 @@ private UserRepository userRepository;
     }
 
     // --- 2. LOCATION VALIDATION (Crucial for Maps) ---
-    if (venue.getLatitude() == null || venue.getLongitude() == null) {
+    Point location = venue.getLocation();
+    if (location == null) {
       throw new RuntimeException("Venue location (latitude/longitude) is required.");
     }
-    double lat = venue.getLatitude();
-    double lng = venue.getLongitude();
+    double lat = location.getY();
+    double lng = location.getX();
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
       throw new RuntimeException("Invalid coordinates provided.");
     }
@@ -388,8 +404,7 @@ private UserRepository userRepository;
     }
 
     if (lat != null && lng != null) {
-      venue.setLatitude(lat);
-      venue.setLongitude(lng);
+      venue.setLocation(toPoint(lat, lng));
     }
 
     // Add Default values here
@@ -478,6 +493,19 @@ private UserRepository userRepository;
 
     // Exact substring match (e.g. "Rajesh Tennis" contains "Rajesh")
     return s1.contains(s2) || s2.contains(s1);
+  }
+
+
+  @Transactional(readOnly = true)
+  public Page<VenueNearbyResponse> findNearby(double latitude, double longitude, double radiusMeters, Pageable pageable) {
+    if (latitude  < -90  || latitude  > 90)  throw new IllegalArgumentException("latitude out of range");
+    if (longitude < -180 || longitude > 180) throw new IllegalArgumentException("longitude out of range");
+    if (radiusMeters <= 0)                   throw new IllegalArgumentException("radius must be positive");
+    if (radiusMeters > 50_000) radiusMeters = 50_000;   // cap at 50 km
+
+    return venueRepository
+        .findNearbyWithDistance(latitude, longitude, radiusMeters, pageable)
+        .map(venueMapper::toNearbyResponse);
   }
 
 }

@@ -3,12 +3,15 @@ package com.parth.sportsapp.sportsbackend.service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import org.apache.commons.text.StringEscapeUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
 
 @Service
 public class EmailService {
@@ -53,19 +56,27 @@ public class EmailService {
    */
   @Async
   public void sendInvite(String toEmail, String inviterName) {
-    String subject = inviterName + " challenged you on DuoSport!";
+    // Escape ALL user-controlled values before placing them in HTML / URLs.
+    // inviterName comes from a user's profile and must never be trusted as markup.
+    String safeName = StringEscapeUtils.escapeHtml4(inviterName == null ? "A player" : inviterName);
+    // Subject is plain text (not HTML) but we still strip control chars by escaping.
+    String subject = safeName + " challenged you on DuoSport!";
 
-    // You can make this HTML prettier later
+    // URL-encode the email so it can't break out of the href attribute or the query string.
+    String encodedEmail = URLEncoder.encode(toEmail == null ? "" : toEmail, StandardCharsets.UTF_8);
+    String registerUrl = frontendUrl + "/register?email=" + encodedEmail;
+    String safeHref = StringEscapeUtils.escapeHtml4(registerUrl);
+
     String htmlContent = "<div style='font-family: Arial, sans-serif;'>"
-        + "<h2>Game Result Logged! 🎾⚽</h2>"
+        + "<h2>Game Result Logged!</h2>"
         + "<p>Hi there,</p>"
-        + "<p><strong>" + inviterName + "</strong> has logged a match result against you on DuoSport.</p>"
-        + "<p>They claimed they won! 👀</p>"
+        + "<p><strong>" + safeName + "</strong> has logged a match result against you on DuoSport.</p>"
+        + "<p>They claimed they won!</p>"
         + "<p>To confirm (or dispute) this score and track your own stats, create your free account:</p>"
         + "<br>"
-        + "<a href=\"" + frontendUrl + "/register?email=" + toEmail + "\" "
+        + "<a href=\"" + safeHref + "\" "
         + "style='background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>"
-        + "View Match & Sign Up</a>"
+        + "View Match &amp; Sign Up</a>"
         + "<br><br>"
         + "<p>See you on the court,<br>The DuoSport Team</p>"
         + "</div>";

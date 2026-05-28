@@ -16,6 +16,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -23,6 +25,8 @@ import java.util.UUID;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+  private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
   @Autowired
   private JwtUtil jwtUtil;
@@ -72,7 +76,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
       }
     } catch (Exception e) {
-      System.out.println("JWT Verification Failed: " + e.getMessage());
+      // Do not log the token or the raw message (may contain token fragments).
+      // A failed/absent token simply leaves the request unauthenticated.
+      log.debug("JWT authentication skipped: {}", e.getClass().getSimpleName());
     }
 
     filterChain.doFilter(request, response);

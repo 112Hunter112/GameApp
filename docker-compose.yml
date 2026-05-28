@@ -21,8 +21,15 @@ services:
       - "8080:8080"
     environment:
       - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=sportsapp
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       - db
+      - redis
     restart: on-failure
 
   # 3. Jenkins (ADDED THIS PART to run Jenkins automatically)
@@ -36,6 +43,12 @@ services:
     volumes:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: sports-redis
+    ports: [ "6379:6379" ]
     restart: always
 
 volumes:

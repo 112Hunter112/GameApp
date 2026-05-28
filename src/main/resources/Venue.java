@@ -5,7 +5,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-
 import org.locationtech.jts.geom.Point;
 
 import java.time.LocalDateTime;
@@ -53,14 +52,8 @@ public class Venue {
   @Column(name = "amenity")
   private List<String> amenities;
 
-
-//  @Column
-//  private Double latitude;
-//
-//  @Column
-//  private Double longitude;
-  @Column(columnDefinition = "geometry(Point, 4326)")
-  private Point location;
+  @Column(columnDefinition = "geography(Point, 4326)")
+  private Point position;
 
   @CreationTimestamp
   @Column(updatable = false)
@@ -132,15 +125,7 @@ public class Venue {
     this.courts = courts;
   }
 
-//  public Double getLatitude() { return latitude; }
-//  public void setLatitude(Double latitude) { this.latitude = latitude; }
-//
-//  public Double getLongitude() { return longitude; }
-//  public void setLongitude(Double longitude) { this.longitude = longitude; }
 
-  //added getters and setters for location
-  public Point getLocation() { return location; }
-  public void setLocation(Point location) { this.location = location; }
 
   public boolean isActive() {
     return isActive;
