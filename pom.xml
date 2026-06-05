@@ -164,6 +164,24 @@
             </plugin>
 
             <!--
+              Failsafe runs integration tests (*IT) during `mvn verify`.
+              Surefire (`mvn test`) runs only fast unit tests (*Test); the *IT
+              classes need Docker (Testcontainers) so they are kept separate.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
               OWASP Dependency-Check (ASVS V14.2 - vulnerable & outdated components).
               Scans all dependencies for known CVEs.
               Run on demand:   ./mvnw org.owasp:dependency-check-maven:check
