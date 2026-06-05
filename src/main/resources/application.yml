@@ -95,6 +95,12 @@ app:
     pwned-check:
       enabled: ${PWNED_CHECK_ENABLED:true}
       base-url: https://api.pwnedpasswords.com
+  # Match-image upload host allow-list. Comma-separated. Empty = any non-private
+  # HTTPS host is accepted (still safe — HTTPS scheme + SSRF private-host block
+  # are always on). Set this once you've picked a storage backend.
+  # Examples: cloudinary.com,amazonaws.com,cloudfront.net,googleusercontent.com
+  match-images:
+    allowed-hosts: ${APP_MATCH_IMAGE_HOSTS:}
 
 jwt:
   secret: ${JWT_SECRET}
