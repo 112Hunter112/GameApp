@@ -38,7 +38,7 @@ class AuthServiceTest {
 
   @Test
   void registerSucceedsForNewUser() {
-    RegisterRequest req = registerReq("a@b.com", "Str0ng!Pass", "Str0ng!Pass", "parth");
+    RegisterRequest req = registerReq("a@b.com", "test-password-fixture", "test-password-fixture", "parth");
     when(userRepository.existsByEmail("a@b.com")).thenReturn(false);
     when(userRepository.existsByUsername("parth")).thenReturn(false);
     when(pwnedPasswordService.isBreached(anyString())).thenReturn(false);
@@ -52,7 +52,7 @@ class AuthServiceTest {
 
   @Test
   void registerRejectsDuplicateEmail() {
-    RegisterRequest req = registerReq("a@b.com", "Str0ng!Pass", "Str0ng!Pass", "parth");
+    RegisterRequest req = registerReq("a@b.com", "test-password-fixture", "test-password-fixture", "parth");
     when(userRepository.existsByEmail("a@b.com")).thenReturn(true);
 
     assertThatThrownBy(() -> authService.register(req))
@@ -63,7 +63,7 @@ class AuthServiceTest {
 
   @Test
   void registerRejectsMismatchedPasswords() {
-    RegisterRequest req = registerReq("a@b.com", "Str0ng!Pass", "Different!1", "parth");
+    RegisterRequest req = registerReq("a@b.com", "test-password-fixture", "different-test-fixture", "parth");
     when(userRepository.existsByEmail("a@b.com")).thenReturn(false);
     when(userRepository.existsByUsername("parth")).thenReturn(false);
 
@@ -74,10 +74,10 @@ class AuthServiceTest {
 
   @Test
   void registerRejectsBreachedPassword() {
-    RegisterRequest req = registerReq("a@b.com", "Password1!", "Password1!", "parth");
+    RegisterRequest req = registerReq("a@b.com", "breached-test-fixture", "breached-test-fixture", "parth");
     when(userRepository.existsByEmail("a@b.com")).thenReturn(false);
     when(userRepository.existsByUsername("parth")).thenReturn(false);
-    when(pwnedPasswordService.isBreached("Password1!")).thenReturn(true);
+    when(pwnedPasswordService.isBreached("breached-test-fixture")).thenReturn(true);
 
     assertThatThrownBy(() -> authService.register(req))
         .hasMessageContaining("data breach");
@@ -90,12 +90,12 @@ class AuthServiceTest {
   void loginSucceedsAndReturnsAccessAndRefreshTokens() {
     User user = verifiedUser("a@b.com");
     when(userRepository.findByEmail("a@b.com")).thenReturn(Optional.of(user));
-    when(passwordEncoder.matches("Str0ng!Pass", user.getPassword())).thenReturn(true);
+    when(passwordEncoder.matches("test-password-fixture", user.getPassword())).thenReturn(true);
     when(jwtUtil.generateToken(eq("a@b.com"), any(UUID.class), anyString())).thenReturn("access-jwt");
     when(jwtUtil.getAccessTokenExpiryMs()).thenReturn(900_000L);
     when(refreshTokenService.issue(user.getId())).thenReturn("refresh-token");
 
-    AuthResponse res = authService.login(new LoginRequest("a@b.com", "Str0ng!Pass"));
+    AuthResponse res = authService.login(new LoginRequest("a@b.com", "test-password-fixture"));
 
     assertThat(res.getToken()).isEqualTo("access-jwt");
     assertThat(res.getRefreshToken()).isEqualTo("refresh-token");
@@ -130,9 +130,9 @@ class AuthServiceTest {
     User user = verifiedUser("a@b.com");
     user.setVerified(false);
     when(userRepository.findByEmail("a@b.com")).thenReturn(Optional.of(user));
-    when(passwordEncoder.matches("Str0ng!Pass", user.getPassword())).thenReturn(true);
+    when(passwordEncoder.matches("test-password-fixture", user.getPassword())).thenReturn(true);
 
-    assertThatThrownBy(() -> authService.login(new LoginRequest("a@b.com", "Str0ng!Pass")))
+    assertThatThrownBy(() -> authService.login(new LoginRequest("a@b.com", "test-password-fixture")))
         .hasMessageContaining("not verified");
     verify(refreshTokenService, never()).issue(any());
   }

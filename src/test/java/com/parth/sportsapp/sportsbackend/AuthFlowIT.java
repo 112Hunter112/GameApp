@@ -59,7 +59,7 @@ class AuthFlowIT {
   @Autowired MockMvc mockMvc;
   @Autowired ObjectMapper objectMapper;
 
-  private static final String PW = "Str0ng@Pass";
+  private static final String PW = "T3st@Fixture";
 
   @Test
   void registerLoginAccessRefresh_fullHappyPath() throws Exception {
@@ -121,7 +121,7 @@ class AuthFlowIT {
 
     mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(json(Map.of("email", "wrongpw@example.com", "password", "Wr0ng@Pass"))))
+            .content(json(Map.of("email", "wrongpw@example.com", "password", "Wr0ng@Fixture"))))
         .andExpect(status().is4xxClientError());
   }
 

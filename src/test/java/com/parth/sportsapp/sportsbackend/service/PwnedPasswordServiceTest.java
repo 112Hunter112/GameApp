@@ -15,7 +15,8 @@ class PwnedPasswordServiceTest {
   @Test
   void returnsFalseWhenDisabled() {
     PwnedPasswordService svc = new PwnedPasswordService(false, "https://api.pwnedpasswords.com");
-    assertThat(svc.isBreached("Password1!")).isFalse();
+    // Disabled flag short-circuits before any HTTP call, so input value is irrelevant.
+    assertThat(svc.isBreached("any-test-fixture")).isFalse();
   }
 
   @Test
