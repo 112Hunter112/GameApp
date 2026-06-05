@@ -44,15 +44,18 @@ public class GoogleAuthService {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final JwtUtil jwtUtil;
+  private final RefreshTokenService refreshTokenService;
 
   private GoogleIdTokenVerifier verifier;
 
   public GoogleAuthService(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
-                           JwtUtil jwtUtil) {
+                           JwtUtil jwtUtil,
+                           RefreshTokenService refreshTokenService) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtUtil = jwtUtil;
+    this.refreshTokenService = refreshTokenService;
   }
 
   @PostConstruct
@@ -132,17 +135,17 @@ public class GoogleAuthService {
       user = createGoogleUser(googleSub, email, firstName, lastName, pictureUrl);
     }
 
-    String token = jwtUtil.generateToken(
-        user.getEmail(),
-        user.getId(),
-        user.getRole() == null ? UserRole.USER.name() : user.getRole().name()
-    );
+    String role = user.getRole() == null ? UserRole.USER.name() : user.getRole().name();
+    String accessToken = jwtUtil.generateToken(user.getEmail(), user.getId(), role);
+    String refreshToken = refreshTokenService.issue(user.getId());
 
     return new AuthResponse(
-        token,
+        accessToken,
+        refreshToken,
+        jwtUtil.getAccessTokenExpiryMs() / 1000,
         user.getEmail(),
         user.getFirstName(),
-        user.getRole() == null ? UserRole.USER.name() : user.getRole().name()
+        role
     );
   }
 
