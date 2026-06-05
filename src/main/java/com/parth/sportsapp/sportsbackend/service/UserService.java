@@ -27,6 +27,9 @@ public class UserService {
   @Autowired
   private PasswordEncoder passwordEncoder;
 
+  @Autowired
+  private PwnedPasswordService pwnedPasswordService;
+
   /**
    * Existing search method - Updated to use the new Constructor
    */
@@ -136,6 +139,11 @@ public class UserService {
     }
     if (newPassword == null || newPassword.length() < 8) {
       throw new RuntimeException("New password must be at least 8 characters");
+    }
+    // NIST SP 800-63B: reject breached passwords on change too.
+    if (pwnedPasswordService.isBreached(newPassword)) {
+      throw new RuntimeException(
+          "This password has appeared in a data breach. Please choose a different one.");
     }
 
     user.setPassword(passwordEncoder.encode(newPassword));
