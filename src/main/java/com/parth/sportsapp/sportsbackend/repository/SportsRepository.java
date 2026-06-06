@@ -43,4 +43,30 @@ public interface SportsRepository extends JpaRepository<Sports, UUID> {
 
   List<Sports> findByMinPlayersGreaterThanEqualOrMaxPlayersLessThanEqual(int min, int max);
 
+  /**
+   * Active sports that have at least one court hosted by a venue within the
+   * given radius of (lat, lng). Used to power the home-screen "Discover sports
+   * near you" strip — anything in this list is currently playable nearby but
+   * the user hasn't necessarily added to their preferences.
+   */
+  @Query(value = """
+      SELECT DISTINCT s.id, s.sport_name, s.icon_url
+      FROM sports s
+      JOIN courts c   ON c.sports_id = s.id
+      JOIN venues v   ON v.id = c.venue_id
+      WHERE s.is_active = true
+        AND v.is_active = true
+        AND v.location IS NOT NULL
+        AND ST_DWithin(
+            v.location::geography,
+            ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+            :radius
+        )
+      ORDER BY s.sport_name
+      """, nativeQuery = true)
+  List<Object[]> findActiveSportsNearby(
+      @Param("lat") double lat,
+      @Param("lng") double lng,
+      @Param("radius") double radius);
 }
+

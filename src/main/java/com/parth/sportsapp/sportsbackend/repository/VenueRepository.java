@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.domain.Pageable;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -62,7 +63,12 @@ List<Venue> findByAddressContainingIgnoreCase(String address);
 
   Page<Venue> findAll(Pageable pageable);
 
-  List<Venue> findAllByOrderByCreatedAtDesc();
+  /**
+   * Paginated newest-first listing. The page size cap configured globally in
+   * application.yml (spring.data.web.pageable.max-page-size) keeps a malicious
+   * ?size=10000000 from OOM-ing the JVM.
+   */
+  Page<Venue> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
   // returns a list * of all Venues with Owner_id
   List<Venue> findByOwner_Id(UUID id);
@@ -168,6 +174,53 @@ List<Venue> findByAddressContainingIgnoreCase(String address);
       @Param("latitude")     double latitude,
       @Param("longitude")    double longitude,
       @Param("radiusMeters") double radiusMeters,
+      Pageable pageable
+  );
+
+  /**
+   * Personalized nearby search: only venues that host AT LEAST ONE court for
+   * one of the supplied sports. Used by the home-feed endpoint to filter venues
+   * down to the user's preferred sports.
+   */
+  @Query(value = """
+      SELECT v.id   AS id,
+             v.name AS name,
+             ST_Distance(
+                 v.location::geography,
+                 ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+             ) AS distance_meters
+      FROM venues v
+      JOIN courts c ON c.venue_id = v.id
+      WHERE v.is_active = true
+        AND v.location IS NOT NULL
+        AND c.sports_id IN (:sportIds)
+        AND ST_DWithin(
+            v.location::geography,
+            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+            :radiusMeters
+        )
+      GROUP BY v.id, v.name, v.location
+      ORDER BY distance_meters ASC, v.id ASC
+      """,
+      countQuery = """
+      SELECT COUNT(DISTINCT v.id)
+      FROM venues v
+      JOIN courts c ON c.venue_id = v.id
+      WHERE v.is_active = true
+        AND v.location IS NOT NULL
+        AND c.sports_id IN (:sportIds)
+        AND ST_DWithin(
+            v.location::geography,
+            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+            :radiusMeters
+        )
+      """,
+      nativeQuery = true)
+  Page<VenueDistanceProjection> findNearbyForSports(
+      @Param("latitude")     double latitude,
+      @Param("longitude")    double longitude,
+      @Param("radiusMeters") double radiusMeters,
+      @Param("sportIds")     Collection<UUID> sportIds,
       Pageable pageable
   );
 

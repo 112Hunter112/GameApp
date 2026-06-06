@@ -1,5 +1,7 @@
 package com.parth.sportsapp.sportsbackend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import org.hibernate.annotations.CreationTimestamp;
@@ -33,6 +35,9 @@ public class User {
   @Column(nullable = false, unique = true)
   private String email;
 
+  // WRITE_ONLY: can be set when deserializing but is NEVER serialized into a
+  // JSON response. Defends against accidental entity exposure leaking the hash.
+  @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
   @NotBlank(message = "no blank password")
   @Column(nullable = false)
   private String password;
@@ -56,8 +61,11 @@ public class User {
   @Column(nullable = false)
   private Boolean isVerified = false;  // ← NEW: Email verified?
 
+  // Account-access secrets — never serialize to clients.
+  @JsonIgnore
   private String verificationToken;  // ← NEW: Random token for verification
 
+  @JsonIgnore
   private LocalDateTime verificationTokenExpiry;  // ← NEW: Token expires after 24 hours
 
   @OneToMany(mappedBy = "user")
@@ -96,6 +104,7 @@ public class User {
 
   private LocalDate dateOfBirth; // Better than storing "int age" because age changes every year
 
+  @JsonIgnore
   private String expoPushToken; // The ID of their phone (for React Native notifications)
 
   @Column(nullable = false)
@@ -105,6 +114,7 @@ public class User {
   private boolean pushNotificationsEnabled = true;
 
   /** Google's stable user identifier (the "sub" claim). Null if user signed up with email. */
+  @JsonIgnore
   @Column(name = "google_id", unique = true)
   private String googleId;
 

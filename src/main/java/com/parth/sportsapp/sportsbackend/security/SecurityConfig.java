@@ -65,11 +65,29 @@ public class SecurityConfig {
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
         // Security response headers (frame-deny prevents clickjacking, etc.).
+        // ASVS V14.4 — HTTP security response headers (defense in depth).
         .headers(headers -> headers
-            .frameOptions(frame -> frame.deny())
-            .contentTypeOptions(ct -> {})
-            .xssProtection(xss -> {})
-            .cacheControl(cc -> {})
+            .frameOptions(frame -> frame.deny())            // clickjacking: no framing
+            .contentTypeOptions(ct -> {})                   // X-Content-Type-Options: nosniff
+            .xssProtection(xss -> {})                       // legacy XSS filter header
+            .cacheControl(cc -> {})                         // no-store on authenticated responses
+            // HSTS: force HTTPS for a year. Only takes effect once served over TLS,
+            // so it's harmless over plain HTTP in local dev.
+            .httpStrictTransportSecurity(hsts -> hsts
+                .includeSubDomains(true)
+                .maxAgeInSeconds(31_536_000))
+            // CSP for a JSON API: block framing, plugins, and base-tag hijacking.
+            // We intentionally omit default-src 'self' so the Swagger UI dev tool
+            // (which uses inline assets) keeps working; the API returns JSON that
+            // browsers never execute as a page anyway.
+            .contentSecurityPolicy(csp -> csp.policyDirectives(
+                "frame-ancestors 'none'; object-src 'none'; base-uri 'none'"))
+            // Don't leak the requested URL to third parties via the Referer header.
+            .referrerPolicy(ref -> ref.policy(
+                org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+            // Disable powerful browser features the API never uses.
+            .permissionsPolicyHeader(pp -> pp.policy(
+                "geolocation=(), camera=(), microphone=(), payment=(), usb=()"))
         )
 
         .authorizeHttpRequests(auth -> auth

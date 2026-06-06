@@ -44,6 +44,9 @@ public class MatchServiceTest {
   @Mock private MatchValidator matchValidator;
   @Mock private MatchMapper matchMapper;
   @Mock private EmailService emailService;
+  // MatchService injects an EntityManager via @PersistenceContext; Mockito does
+  // not process that annotation, so we provide an explicit mock for @InjectMocks.
+  @Mock private jakarta.persistence.EntityManager entityManager;
 
 @Test
   public void testLogManualMatch_Success() {
@@ -85,8 +88,9 @@ public class MatchServiceTest {
   // Verify that the repository.save() was actually called once
   verify(matchRepository, times(1)).save(any(Match.class));
 
-  // Verify participants were saved (Creator added as TEAM_A)
-  verify(participantsRepository, atLeastOnce()).save(any(Participants.class));
+  // Verify participants were saved (Creator added as TEAM_A).
+  // MatchService persists participants via EntityManager.persist, not the repository.
+  verify(entityManager, atLeastOnce()).persist(any(Participants.class));
   }
 
 

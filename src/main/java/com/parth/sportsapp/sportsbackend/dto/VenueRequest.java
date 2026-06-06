@@ -5,20 +5,24 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
 
 public class VenueRequest {
 
   @NotBlank(message = "Venue name is required")
+  @Size(max = 100, message = "Venue name too long")
   private String name;
 
   @NotBlank(message = "Address is required")
+  @Size(max = 500, message = "Address too long")
   private String address;
 
   @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Invalid phone number format")
   private String phoneNumber;
 
+  @Size(max = 2000, message = "Description too long")
   private String description;
 
   // We accept simple doubles, not complex PostGIS Points

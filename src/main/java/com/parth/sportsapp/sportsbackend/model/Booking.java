@@ -42,11 +42,13 @@ public class Booking {
   @Column(name = "payment_id")
   private String paymentId; // Stripe Transaction ID
 
+  @Enumerated(EnumType.STRING)
   @Column(name = "payment_status")
-  private String paymentStatus; // PAID, REFUNDED
+  private PaymentStatus paymentStatus = PaymentStatus.PENDING; // PAID, REFUNDED
 
+  @Enumerated(EnumType.STRING)
   @Column(name = "payment_method")
-  private String paymentMethod; // CARD, APPLE_PAY
+  private PaymentMethod paymentMethod = PaymentMethod.SPLIT; // CARD, APPLE_PAY
 
   @CreationTimestamp
   @Column(name = "created_at", updatable = false)
@@ -92,11 +94,11 @@ public class Booking {
   public String getPaymentId() { return paymentId; }
   public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
 
-  public String getPaymentStatus() { return paymentStatus; }
-  public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+  public PaymentStatus getPaymentStatus() { return paymentStatus; }
+  public void setPaymentStatus(PaymentStatus paymentStatus) { this.paymentStatus = paymentStatus; }
 
-  public String getPaymentMethod() { return paymentMethod; }
-  public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+  public PaymentMethod getPaymentMethod() { return paymentMethod; }
+  public void setPaymentMethod(PaymentMethod paymentMethod) { this.paymentMethod = paymentMethod; }
 
   public LocalDateTime getCreatedAt() { return createdAt; }
   public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

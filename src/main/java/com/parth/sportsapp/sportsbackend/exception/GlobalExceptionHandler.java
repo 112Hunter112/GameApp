@@ -93,6 +93,13 @@ public class GlobalExceptionHandler {
     return body(HttpStatus.BAD_REQUEST, "Invalid value for parameter: " + ex.getName());
   }
 
+  @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+  public ResponseEntity<Map<String, Object>> handleUnreadableBody(
+      org.springframework.http.converter.HttpMessageNotReadableException ex) {
+    // Malformed JSON, or an unknown property when fail-on-unknown-properties is on.
+    return body(HttpStatus.BAD_REQUEST, "Malformed or unexpected request body");
+  }
+
   // --- Database -------------------------------------------------------------
 
   @ExceptionHandler(DataIntegrityViolationException.class)

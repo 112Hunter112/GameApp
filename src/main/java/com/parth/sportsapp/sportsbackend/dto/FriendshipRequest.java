@@ -1,5 +1,8 @@
 package com.parth.sportsapp.sportsbackend.dto;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 import java.util.UUID;
 
 /**
@@ -10,8 +13,10 @@ public class FriendshipRequest {
 
 
   // we need the userID which is from user to see who the request is going to
+  @NotNull(message = "receiverId is required")
   private UUID receiverId;
 
+  @Size(max = 500, message = "Message cannot exceed 500 characters")
   private String message;
 
   // -GETTERS and SETTERS

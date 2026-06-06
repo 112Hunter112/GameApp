@@ -29,6 +29,12 @@ public class AuthService {
   @Autowired
   private EmailService emailService;
 
+  @Autowired
+  private PwnedPasswordService pwnedPasswordService;
+
+  @Autowired
+  private RefreshTokenService refreshTokenService;
+
   /**
    * This method outputs the AuthResponse if all test cases pass and also adds the data to the
    * DB by making it an object.
@@ -53,6 +59,12 @@ public class AuthService {
       throw new RuntimeException("Passwords do not match");
     }
 
+    // NIST SP 800-63B: reject passwords that appear in known breach corpora.
+    if (pwnedPasswordService.isBreached(registerRequest.getPassword())) {
+      throw new RuntimeException(
+          "This password has appeared in a data breach. Please choose a different one.");
+    }
+
     User newUser = new User();
     newUser.setEmail(registerRequest.getEmail());
     newUser.setUsername(registerRequest.getUsername().toLowerCase());
@@ -72,34 +84,66 @@ public class AuthService {
     return "Account created successfully";
   }
 
+  // A throwaway BCrypt hash, computed once, used to equalize login response time
+  // when the email does not exist (timing-attack / user-enumeration defense).
+  private volatile String dummyHash;
+
+  private String dummyHash() {
+    String local = dummyHash;
+    if (local == null) {
+      synchronized (this) {
+        local = dummyHash;
+        if (local == null) {
+          // Encoded at the same cost factor as real passwords, so a comparison
+          // against it takes the same wall-clock time as a real comparison.
+          local = passwordEncoder.encode("timing-safe-placeholder-password");
+          dummyHash = local;
+        }
+      }
+    }
+    return local;
+  }
+
   public AuthResponse login(LoginRequest request) {
 
-    // Step 1: Find the user by email
-    // .orElseThrow() is a cleaner way to handle "User not found" than using "if (user == null)"
+    // Step 1: Find the user by email.
+    // SECURITY: use the SAME error for "no such user" and "wrong password" so an
+    // attacker cannot enumerate which emails are registered (ASVS V2.2 / V3).
     User user = userRepository.findByEmail(request.getEmail())
-        .orElseThrow(() -> new RuntimeException("User not found"));
+        .orElse(null);
 
-    // Step 2: Validate the password
-    // We compare the Raw password (request) vs the Encrypted password (database)
-    boolean isMatch = passwordEncoder.matches(request.getPassword(), user.getPassword());
+    boolean isMatch;
+    if (user != null) {
+      isMatch = passwordEncoder.matches(request.getPassword(), user.getPassword());
+    } else {
+      // No such user: still run a BCrypt comparison against a dummy hash so the
+      // response takes the same time as a real (failed) login. Without this, a
+      // missing email returns in ~1ms while a real email takes ~250ms, letting an
+      // attacker enumerate accounts by timing despite the identical error message.
+      passwordEncoder.matches(request.getPassword(), dummyHash());
+      isMatch = false;
+    }
 
     if (!isMatch) {
-      throw new RuntimeException("Invalid credentials");
+      throw new RuntimeException("Invalid email or password");
     }
 
     if (!Boolean.TRUE.equals(user.getVerified())) {
       throw new RuntimeException("Account not verified. Please check your email.");
     }
 
-    // Step 3: Generate the Token
-    String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole().toString());
+    // Step 3: Generate a short-lived access token + a long-lived refresh token.
+    String accessToken = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole().toString());
+    String refreshToken = refreshTokenService.issue(user.getId());
 
-    // Step 4: Return the response
+    // Step 4: Return both.
     return new AuthResponse(
-        token,
+        accessToken,
+        refreshToken,
+        jwtUtil.getAccessTokenExpiryMs() / 1000,
         user.getEmail(),
         user.getFirstName(),
-        user.getRole().name() // Converts Enum (USER) to String ("USER")
+        user.getRole().name()
     );
   }
 

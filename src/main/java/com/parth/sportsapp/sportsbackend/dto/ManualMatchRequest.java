@@ -1,5 +1,7 @@
 package com.parth.sportsapp.sportsbackend.dto;
 
+import jakarta.validation.constraints.Size;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List; // Import List
@@ -9,7 +11,7 @@ public class ManualMatchRequest {
 
   // --- 1. TEAMS (Now Lists instead of Single Values) ---
   private List<UUID> opponentIds;       // List of opponents on the App
-  private List<String> opponentEmails;  // List of external opponents (Email)
+  private List<@Size(max = 320) String> opponentEmails;  // List of external opponents (Email)
   // Note: opponentName is tricky with lists. Usually, frontend handles name display until they join.
   // If you need names for email invites, you might need a small inner class or Map,
   // but for now, we can just use the email as the name or add a List<String> opponentNames.
@@ -19,20 +21,27 @@ public class ManualMatchRequest {
 
 
   // --- 2. GAME DETAILS ---
+  @Size(max = 50)
   private String sport;                 // "TENNIS_SINGLES", "SOCCER_5V5", etc.
   private LocalDateTime date;
+  @Size(max = 100)
   private String score;                 // "6-4, 6-4"
+  @Size(max = 2000)
   private String notes;                 // "Played at Central Park"
 
 
 
 
+  @Size(max = 20)
   private String winningTeam; // Expected values: "TEAM_A", "TEAM_B"
 
+  @Size(max = 100)
   private String venueName;
+  @Size(max = 500)
   private String venueAddress;
   private Double venueLat;
   private Double venueLng;
+  @Size(max = 200)
   private String externalVenueId;
 
 

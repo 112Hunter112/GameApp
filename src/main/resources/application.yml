@@ -1,4 +1,6 @@
 spring:
+  main:
+    lazy-initialization: true
   config:
     import: optional:classpath:application-secrets.properties
   application:
@@ -11,6 +13,12 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+    # DoS guard: cap pagination so a client cannot request ?size=10000000 and
+    # force the server to load millions of rows into memory.
+    web:
+      pageable:
+        default-page-size: 20
+        max-page-size: 100
   jpa:
     hibernate:
       ddl-auto: update
@@ -35,8 +43,27 @@ spring:
           starttls:
             enable: true
 
+  # ASVS V13.1 — reject unknown JSON properties so a client cannot smuggle
+  # extra fields into request bodies (mass-assignment defense).
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+
+  # DoS guard: cap multipart upload sizes (ASVS V12.1 / V13.x).
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
 server:
   port: 8080
+  # ASVS V14.3 — do not advertise the server/framework version.
+  server-header: ""
+  # DoS guard: cap request line / header / POST body sizes.
+  max-http-request-header-size: 16KB
+  tomcat:
+    max-http-form-post-size: 2MB
+    max-swallow-size: 2MB
   error:
     # Never leak stack traces or internal exception messages to clients.
     include-stacktrace: never
@@ -44,14 +71,43 @@ server:
     include-binding-errors: never
     include-exception: false
 
-# CORS: comma-separated explicit origins. NEVER use "*" in production.
+# ASVS V14.3 — Actuator: expose only health, hide everything else,
+# and never show full health details to anonymous callers.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+  info:
+    env:
+      enabled: false
+
 app:
+  # CORS: comma-separated explicit origins. NEVER use "*" in production.
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8081,http://localhost:19006}
+  # Password breach screening (Have I Been Pwned). Disable in tests/offline.
+  security:
+    pwned-check:
+      enabled: ${PWNED_CHECK_ENABLED:true}
+      base-url: https://api.pwnedpasswords.com
+  # Match-image upload host allow-list. Comma-separated. Empty = any non-private
+  # HTTPS host is accepted (still safe — HTTPS scheme + SSRF private-host block
+  # are always on). Set this once you've picked a storage backend.
+  # Examples: cloudinary.com,amazonaws.com,cloudfront.net,googleusercontent.com
+  match-images:
+    allowed-hosts: ${APP_MATCH_IMAGE_HOSTS:}
 
 jwt:
   secret: ${JWT_SECRET}
-  expiration: 86400000
+  # Access token: short-lived. If it leaks, the exposure window is small.
+  expiration: 900000            # 15 minutes (ms)
+  # Refresh token: long-lived, stored hashed in DB, single-use (rotated on each refresh).
+  refresh-expiration: 2592000000 # 30 days (ms)
 
 # Google Sign-In: comma-separated client IDs that we accept ID tokens for.
 # Get these from Google Cloud Console -> Credentials -> OAuth 2.0 Client IDs.

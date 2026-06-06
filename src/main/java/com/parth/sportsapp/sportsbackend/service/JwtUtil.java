@@ -62,6 +62,11 @@ public class JwtUtil {
     log.info("JWT signing key initialized ({} bits, expiry {} ms)", keyBytes.length * 8, EXPIRATION_TIME);
   }
 
+  /** Access-token lifetime in milliseconds (for reporting expiresIn to clients). */
+  public long getAccessTokenExpiryMs() {
+    return EXPIRATION_TIME;
+  }
+
   public String generateToken(String email, UUID userId, String role) {
     Map<String, Object> claims = new HashMap<>();
     claims.put("userId", userId.toString());
