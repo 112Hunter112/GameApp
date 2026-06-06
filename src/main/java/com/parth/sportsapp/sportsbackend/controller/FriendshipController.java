@@ -3,6 +3,7 @@ package com.parth.sportsapp.sportsbackend.controller;
 import com.parth.sportsapp.sportsbackend.dto.FriendshipRequest;
 import com.parth.sportsapp.sportsbackend.dto.FriendshipResponse;
 import com.parth.sportsapp.sportsbackend.dto.UserSummaryDto;
+import com.parth.sportsapp.sportsbackend.exception.UnauthorizedException;
 import com.parth.sportsapp.sportsbackend.service.FriendshipService;
 import com.parth.sportsapp.sportsbackend.service.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,10 +24,14 @@ public class FriendshipController {
   // Helper: Extract User ID
   private UUID getUserIdFromToken(String authHeader) {
     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-      throw new RuntimeException("Invalid Token");
+      throw new UnauthorizedException("Missing or malformed Authorization header");
     }
-    String token = authHeader.substring(7);
-    return UUID.fromString(jwtUtil.extractUserId(token));
+    try {
+      String token = authHeader.substring(7);
+      return UUID.fromString(jwtUtil.extractUserId(token));
+    } catch (IllegalArgumentException e) {
+      throw new UnauthorizedException("Invalid token");
+    }
   }
 
   // --- REQUESTS ---

@@ -14,6 +14,7 @@ spring:
 jwt:
   secret: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
   expiration: 3600000
+  refresh-expiration: 2592000000
 
 # Google Sign-In not configured in tests; the service will refuse calls.
 google:
@@ -21,5 +22,9 @@ google:
     client-ids:
 
 app:
+  # No outbound network in tests — disable the HIBP breach check.
+  security:
+    pwned-check:
+      enabled: false
   cors:
     allowed-origins: http://localhost:3000

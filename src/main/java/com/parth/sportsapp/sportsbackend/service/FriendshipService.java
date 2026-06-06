@@ -3,6 +3,9 @@ package com.parth.sportsapp.sportsbackend.service;
 import com.parth.sportsapp.sportsbackend.dto.FriendshipRequest;
 import com.parth.sportsapp.sportsbackend.dto.FriendshipResponse;
 import com.parth.sportsapp.sportsbackend.dto.UserSummaryDto;
+import com.parth.sportsapp.sportsbackend.exception.BadRequestException;
+import com.parth.sportsapp.sportsbackend.exception.ForbiddenException;
+import com.parth.sportsapp.sportsbackend.exception.NotFoundException;
 import com.parth.sportsapp.sportsbackend.mapper.FriendshipMapper;
 import com.parth.sportsapp.sportsbackend.model.Friendship;
 import com.parth.sportsapp.sportsbackend.model.FriendshipStatus;
@@ -61,19 +64,19 @@ public class FriendshipService {
     UUID receiverId = requestDto.getReceiverId();
 
     if (requesterId.equals(receiverId)) {
-      throw new RuntimeException("You cannot send a friend request to yourself.");
+      throw new BadRequestException("You cannot send a friend request to yourself.");
     }
 
     // Check if connection exists (using Boolean query which is safe)
     if (friendshipRepository.areFriends(requesterId, receiverId) ||
         friendshipRepository.findFriendshipBetween(requesterId, receiverId).isPresent()) {
-      throw new RuntimeException("Friendship or pending request already exists.");
+      throw new BadRequestException("Friendship or pending request already exists.");
     }
 
     User requester = userRepository.findById(requesterId)
-        .orElseThrow(() -> new RuntimeException("Requester not found"));
+        .orElseThrow(() -> new NotFoundException("Requester not found"));
     User receiver = userRepository.findById(receiverId)
-        .orElseThrow(() -> new RuntimeException("Receiver not found"));
+        .orElseThrow(() -> new NotFoundException("Receiver not found"));
 
     Friendship friendship = new Friendship();
     friendship.setRequester(requester);
@@ -87,14 +90,14 @@ public class FriendshipService {
   @Transactional
   public FriendshipResponse acceptRequest(UUID requestId, UUID currentUserId) {
     Friendship request = friendshipRepository.findById(requestId)
-        .orElseThrow(() -> new RuntimeException("Friend request not found"));
+        .orElseThrow(() -> new NotFoundException("Friend request not found"));
 
     if (!request.getReceiver().getId().equals(currentUserId)) {
-      throw new RuntimeException("Unauthorized: You did not receive this request.");
+      throw new ForbiddenException("You did not receive this request.");
     }
 
     if (request.getStatus() != FriendshipStatus.PENDING) {
-      throw new RuntimeException("Request is not pending.");
+      throw new BadRequestException("Request is not pending.");
     }
 
     request.setStatus(FriendshipStatus.ACCEPTED);
@@ -104,10 +107,10 @@ public class FriendshipService {
   @Transactional
   public void rejectRequest(UUID requestId, UUID currentUserId) {
     Friendship request = friendshipRepository.findById(requestId)
-        .orElseThrow(() -> new RuntimeException("Friend request not found"));
+        .orElseThrow(() -> new NotFoundException("Friend request not found"));
 
     if (!request.getReceiver().getId().equals(currentUserId)) {
-      throw new RuntimeException("Unauthorized");
+      throw new ForbiddenException("You did not receive this request");
     }
     friendshipRepository.delete(request);
   }
@@ -115,10 +118,10 @@ public class FriendshipService {
   @Transactional
   public void cancelSentRequest(UUID requestId, UUID currentUserId) {
     Friendship request = friendshipRepository.findById(requestId)
-        .orElseThrow(() -> new RuntimeException("Request not found"));
+        .orElseThrow(() -> new NotFoundException("Friend request not found"));
 
     if (!request.getRequester().getId().equals(currentUserId)) {
-      throw new RuntimeException("Unauthorized");
+      throw new ForbiddenException("You did not send this request");
     }
     friendshipRepository.delete(request);
   }
@@ -126,7 +129,7 @@ public class FriendshipService {
   @Transactional
   public void unfriendUser(UUID friendId, UUID currentUserId) {
     Friendship friendship = friendshipRepository.findFriendshipBetween(currentUserId, friendId)
-        .orElseThrow(() -> new RuntimeException("Friendship not found"));
+        .orElseThrow(() -> new NotFoundException("Friendship not found"));
     friendshipRepository.delete(friendship);
   }
 

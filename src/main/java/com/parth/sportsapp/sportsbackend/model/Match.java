@@ -52,6 +52,13 @@ public class Match {
   @Column(name = "status", nullable = false)
   private String status = "OPEN"; // OPEN/FULL (Lobby Status)
 
+  /**
+   * Set to true the first (and only) time Elo ratings are applied for this
+   * match. Prevents re-confirmation from doubling the rating change.
+   */
+  @Column(name = "ratings_applied", nullable = false)
+  private boolean ratingsApplied = false;
+
   // This is the list of all participants for that match
   @OneToMany(mappedBy = "match", cascade = CascadeType.ALL) // Cascade allows saving participants with match
   private List<Participants> participants;
@@ -118,6 +125,9 @@ public class Match {
 
   public String getStatus() { return status; }
   public void setStatus(String status) { this.status = status; }
+
+  public boolean isRatingsApplied() { return ratingsApplied; }
+  public void setRatingsApplied(boolean v) { this.ratingsApplied = v; }
 
   public boolean isPrivate() {
     return isPrivate;

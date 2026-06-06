@@ -3,6 +3,9 @@ package com.parth.sportsapp.sportsbackend.service;
 
 import com.parth.sportsapp.sportsbackend.Validation.MatchValidator;
 import com.parth.sportsapp.sportsbackend.dto.*;
+import com.parth.sportsapp.sportsbackend.exception.BadRequestException;
+import com.parth.sportsapp.sportsbackend.exception.ForbiddenException;
+import com.parth.sportsapp.sportsbackend.exception.NotFoundException;
 import com.parth.sportsapp.sportsbackend.mapper.MatchMapper;
 import com.parth.sportsapp.sportsbackend.model.*;
 
@@ -79,7 +82,7 @@ public class MatchService {
 
     // Fetch Creator, the User, use JWT
     User creator = userRepository.findById(userId)
-        .orElseThrow(() -> new RuntimeException("Current user not found"));
+        .orElseThrow(() -> new NotFoundException("Current user not found"));
 
     // Create and Setup Match
     Match match = new Match();
@@ -108,7 +111,7 @@ public class MatchService {
     for (UUID teammateId : manualMatchRequest.getTeammateIds()) {
 
       User teammate = userRepository.findById(teammateId)
-          .orElseThrow(() -> new RuntimeException("User not found!"));
+          .orElseThrow(() -> new NotFoundException("Teammate not found"));
 
       addParticipant(savedMatch, teammate, false, ParticipationStatus.PENDING, "TEAM_A");
 
@@ -119,7 +122,7 @@ public class MatchService {
 
     for (UUID oppId : manualMatchRequest.getOpponentIds()) {
       User opponent = userRepository.findById(oppId)
-          .orElseThrow(() -> new RuntimeException("Opponent not found: " + oppId));
+          .orElseThrow(() -> new NotFoundException("Opponent not found"));
 
       // 1. Save to DB
       addParticipant(savedMatch, opponent, false, ParticipationStatus.PENDING, "TEAM_B");
@@ -349,14 +352,14 @@ public class MatchService {
   @Transactional
   public void cancelMatch(UUID matchId, UUID userId) {
     Match match = matchRepository.findById(matchId)
-        .orElseThrow(() -> new RuntimeException("Match not found"));
+        .orElseThrow(() -> new NotFoundException("Match not found"));
 
     if (!match.getCreatedByUser().getId().equals(userId)) {
-      throw new RuntimeException("Only the person who logged this match can cancel it");
+      throw new ForbiddenException("Only the person who logged this match can cancel it");
     }
 
     if (match.getVerificationStatus() != MatchVerificationStatus.PENDING) {
-      throw new RuntimeException("Only pending matches can be cancelled");
+      throw new BadRequestException("Only pending matches can be cancelled");
     }
 
     participantsRepository.deleteAll(match.getParticipants());
@@ -365,29 +368,29 @@ public class MatchService {
 
   public MatchResponse verifyMatch(UUID matchId, UUID userId, boolean approve) {
     Match match = matchRepository.findById(matchId)
-        .orElseThrow(() -> new RuntimeException("Match not found"));
+        .orElseThrow(() -> new NotFoundException("Match not found"));
 
     // 1. Find the Verifier (The user trying to click the button)
     Participants verifier = match.getParticipants().stream()
         .filter(p -> p.getUser().getId().equals(userId))
         .findFirst()
-        .orElseThrow(() -> new RuntimeException("You are not a participant in this match"));
+        .orElseThrow(() -> new ForbiddenException("You are not a participant in this match"));
 
     // 2. Find the Creator (The one who logged the match)
     Participants creator = match.getParticipants().stream()
         .filter(p -> p.getUser().getId().equals(match.getCreatedByUser().getId()))
         .findFirst()
-        .orElseThrow(() -> new RuntimeException("Creator not found in participants"));
+        .orElseThrow(() -> new NotFoundException("Creator not found in participants"));
 
     // 3. SECURITY CHECK: Prevent Creator from verifying
     if (match.getCreatedByUser().getId().equals(userId)) {
-      throw new RuntimeException("You cannot verify your own match submission");
+      throw new ForbiddenException("You cannot verify your own match submission");
     }
 
     // 4. SECURITY CHECK: Prevent Teammates from verifying [THE FIX]
     // If Verifier is on "TEAM_A" and Creator is on "TEAM_A", block it.
     if (verifier.getTeamName().equals(creator.getTeamName())) {
-      throw new RuntimeException("Teammates cannot verify match results. Please ask an opponent to verify.");
+      throw new ForbiddenException("Teammates cannot verify match results. Please ask an opponent to verify.");
     }
 
     // 5. Process Verification
@@ -397,6 +400,13 @@ public class MatchService {
       // Update the verifier's status to ACCEPTED
       verifier.setStatus(ParticipationStatus.ACCEPTED);
       participantsRepository.save(verifier);
+
+      // TODO(elo): when the match transitions to CONFIRMED for the first time
+      // (check !match.isRatingsApplied()), compute the new Elo for every
+      // participant and set match.setRatingsApplied(true) so re-confirmation
+      // doesn't double-apply. The repo methods you need already exist:
+      //   userPreferenceRepository.findByUser_IdAndSports_Id(userId, sportId)
+      //   userPreferenceRepository.save(...)
 
       // Notify the creator
       notificationService.sendMatchVerified(match.getCreatedByUser(), match.getId());
@@ -413,12 +423,12 @@ public class MatchService {
   @Transactional
   public MatchResponse updateMatchScore(UUID matchId, UUID userId, String score, String winningTeam) {
     Match match = matchRepository.findById(matchId)
-        .orElseThrow(() -> new RuntimeException("Match not found"));
+        .orElseThrow(() -> new NotFoundException("Match not found"));
 
     boolean isParticipant = match.getParticipants().stream()
         .anyMatch(p -> p.getUser().getId().equals(userId));
 
-    if (!isParticipant) throw new RuntimeException("Not a participant");
+    if (!isParticipant) throw new ForbiddenException("You are not a participant in this match");
 
     match.setScore(score);
     match.setWinningTeam(winningTeam);
@@ -433,6 +443,5 @@ public class MatchService {
 
     return matchMapper.toDto(matchRepository.save(match));
   }
-
 
 }

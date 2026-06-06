@@ -3,12 +3,17 @@ package com.parth.sportsapp.sportsbackend.controller;
 import com.parth.sportsapp.sportsbackend.dto.AuthResponse;
 import com.parth.sportsapp.sportsbackend.dto.GoogleLoginRequest;
 import com.parth.sportsapp.sportsbackend.dto.LoginRequest;
+import com.parth.sportsapp.sportsbackend.dto.RefreshTokenRequest;
 import com.parth.sportsapp.sportsbackend.dto.RegisterRequest;
+import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.service.AuthService;
 import com.parth.sportsapp.sportsbackend.service.GoogleAuthService;
+import com.parth.sportsapp.sportsbackend.service.RefreshTokenService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 // CORS is handled centrally in SecurityConfig (app.cors.allowed-origins).
@@ -22,6 +27,9 @@ public class AuthController {
 
   @Autowired
   private GoogleAuthService googleAuthService;
+
+  @Autowired
+  private RefreshTokenService refreshTokenService;
 
 
 
@@ -85,5 +93,44 @@ public class AuthController {
   public ResponseEntity<AuthResponse> loginWithGoogle(
       @Valid @RequestBody GoogleLoginRequest request) {
     return ResponseEntity.ok(googleAuthService.loginWithGoogle(request.getIdToken()));
+  }
+
+  /**
+   * Exchange a valid refresh token for a fresh access token + a new (rotated)
+   * refresh token. The old refresh token is invalidated.
+   *
+   * Body: { "refreshToken": "<token>" }
+   */
+  @PostMapping("/refresh")
+  public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+    return ResponseEntity.ok(refreshTokenService.refresh(request.getRefreshToken()));
+  }
+
+  /**
+   * Logout on this device: revoke the supplied refresh token. The access token
+   * remains valid until it expires (max 15 min), but it can no longer be renewed.
+   *
+   * Body: { "refreshToken": "<token>" }
+   */
+  @PostMapping("/logout")
+  public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+    refreshTokenService.revoke(request.getRefreshToken());
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Revoke EVERY refresh token for the authenticated user — "log me out on all
+   * devices." Used after password change, suspected token theft, or the user
+   * tapping "Sign out everywhere" in settings.
+   *
+   * Existing access tokens stay valid until they expire (max 15 min), but they
+   * can no longer be renewed, so the user is effectively kicked off within
+   * minutes on every device.
+   */
+  @PostMapping("/logout-all")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<Void> logoutEverywhere(@AuthenticationPrincipal User user) {
+    refreshTokenService.revokeAllForUser(user.getId());
+    return ResponseEntity.noContent().build();
   }
 }

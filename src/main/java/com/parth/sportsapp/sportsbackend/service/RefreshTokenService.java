@@ -10,6 +10,7 @@ import com.parth.sportsapp.sportsbackend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -128,6 +129,20 @@ public class RefreshTokenService {
   @Transactional
   public void revokeAllForUser(UUID userId) {
     refreshTokenRepository.revokeAllForUser(userId);
+  }
+
+  /**
+   * Nightly cleanup of refresh tokens past their expiry. Without this the
+   * table grows forever as legitimate tokens age out. 3 AM is chosen for low
+   * traffic; cron string is "second minute hour day-of-month month day-of-week".
+   */
+  @Scheduled(cron = "0 0 3 * * *")
+  @Transactional
+  public void purgeExpiredTokens() {
+    int removed = refreshTokenRepository.deleteExpired(Instant.now());
+    if (removed > 0) {
+      log.info("Refresh token cleanup: removed {} expired tokens", removed);
+    }
   }
 
   // --- helpers --------------------------------------------------------------
