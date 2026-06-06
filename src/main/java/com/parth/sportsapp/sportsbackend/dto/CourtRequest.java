@@ -3,6 +3,7 @@ package com.parth.sportsapp.sportsbackend.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -10,6 +11,7 @@ import java.util.UUID;
 public class CourtRequest {
 
   @NotBlank(message = "Court name or number is required")
+  @Size(max = 50)
   private String courtNumber; // e.g., "Court 1", "Center Court"
 
   @NotNull(message = "Sport ID is required")
@@ -21,6 +23,7 @@ public class CourtRequest {
 
   private boolean isIndoor; // true = Indoor, false = Outdoor
 
+  @Size(max = 50)
   private String surfaceType; // e.g., "Grass", "Clay", "Hard Court", "Synthetic"
 
   private Integer capacity; // How many players/spectators fits?
