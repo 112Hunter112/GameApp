@@ -105,7 +105,8 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
 
             // Public discovery endpoints
-            .requestMatchers(HttpMethod.GET, "/api/venues/search", "/api/venues/nearby").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/venues/search", "/api/venues/nearby",
+                "/api/venues/discover").permitAll()
 
             // Public booking discovery: availability grid + venue booking rules,
             // so players can browse times before signing in. Writing requires auth.

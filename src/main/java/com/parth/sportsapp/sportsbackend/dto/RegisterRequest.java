@@ -14,8 +14,11 @@ public class RegisterRequest {
 
   @NotBlank(message = "Password is required")
   @Size(max = 128, message = "Password too long")
-  @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$",
-      message = "Password must be 8+ chars with 1 number, 1 uppercase, 1 lowercase, 1 special character (@#$%^&+=)")
+  // NIST SP 800-63B: length + breach screening (PwnedPasswordService) beat
+  // composition rules. We only require 8+ chars with a letter and a number —
+  // the old special-character rule rejected good passwords and confused users.
+  @Pattern(regexp = "^(?=.*[0-9])(?=.*[A-Za-z])(?=\\S+$).{8,}$",
+      message = "Password must be at least 8 characters with at least one letter and one number")
   private String password;
 
   @NotBlank(message = "Password confirmation is required")

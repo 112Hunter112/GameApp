@@ -1,10 +1,12 @@
 package com.parth.sportsapp.sportsbackend.controller;
 
 import com.parth.sportsapp.sportsbackend.dto.AuthResponse;
+import com.parth.sportsapp.sportsbackend.dto.ForgotPasswordRequest;
 import com.parth.sportsapp.sportsbackend.dto.GoogleLoginRequest;
 import com.parth.sportsapp.sportsbackend.dto.LoginRequest;
 import com.parth.sportsapp.sportsbackend.dto.RefreshTokenRequest;
 import com.parth.sportsapp.sportsbackend.dto.RegisterRequest;
+import com.parth.sportsapp.sportsbackend.dto.ResetPasswordRequest;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.service.AuthService;
 import com.parth.sportsapp.sportsbackend.service.GoogleAuthService;
@@ -30,6 +32,9 @@ public class AuthController {
 
   @Autowired
   private RefreshTokenService refreshTokenService;
+
+  @Autowired
+  private com.parth.sportsapp.sportsbackend.service.PasswordResetService passwordResetService;
 
 
 
@@ -93,6 +98,32 @@ public class AuthController {
   public ResponseEntity<AuthResponse> loginWithGoogle(
       @Valid @RequestBody GoogleLoginRequest request) {
     return ResponseEntity.ok(googleAuthService.loginWithGoogle(request.getIdToken()));
+  }
+
+  /**
+   * Forgot password, step 1: email a 6-digit reset code.
+   * ALWAYS returns 200 with the same body — never reveals whether the email
+   * exists (user-enumeration defense). Rate-limited server-side.
+   *
+   * Body: { "email": "user@example.com" }
+   */
+  @PostMapping("/forgot-password")
+  public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+    passwordResetService.requestCode(request.getEmail());
+    return ResponseEntity.ok("If that email exists, a reset code is on its way.");
+  }
+
+  /**
+   * Forgot password, step 2: trade the emailed code + a new password for a reset.
+   * On success every session is logged out; the user signs in with the new password.
+   *
+   * Body: { "email": "...", "code": "123456", "newPassword": "..." }
+   */
+  @PostMapping("/reset-password")
+  public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+    passwordResetService.resetPassword(
+        request.getEmail(), request.getCode(), request.getNewPassword());
+    return ResponseEntity.ok("Password updated. You can now log in.");
   }
 
   /**

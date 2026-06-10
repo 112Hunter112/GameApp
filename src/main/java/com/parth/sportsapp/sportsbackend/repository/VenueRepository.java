@@ -47,6 +47,61 @@ public interface VenueRepository extends JpaRepository<Venue, UUID> {
   );
 
   /**
+   * Unified discover/search: free-text over name+address, optional sport filter,
+   * optional location for distance sorting — all in one query.
+   *
+   * Optional params arrive as STRINGS where '' means "not provided"; NULLIF turns
+   * them into SQL NULLs so casts are safe regardless of evaluation order (a plain
+   * ':p = '' OR CAST(:p AS uuid)' can still cast-fail in Postgres, which does not
+   * guarantee OR short-circuiting).
+   */
+  @Query(value = """
+      SELECT v.id AS id, v.name AS name, v.address AS address,
+             CASE WHEN NULLIF(:lat, '') IS NULL THEN NULL
+                  ELSE ST_Distance(
+                      v.location::geography,
+                      ST_SetSRID(ST_MakePoint(
+                          CAST(NULLIF(:lng, '') AS float8),
+                          CAST(NULLIF(:lat, '') AS float8)), 4326)::geography)
+             END AS "distanceMeters"
+      FROM venues v
+      WHERE v.is_active = true
+        AND (:q = '' OR v.name ILIKE '%' || :q || '%' OR v.address ILIKE '%' || :q || '%')
+        AND (NULLIF(:sportId, '') IS NULL OR EXISTS (
+              SELECT 1 FROM courts c
+              WHERE c.venue_id = v.id
+                AND c.is_active = true
+                AND c.sports_id = CAST(NULLIF(:sportId, '') AS uuid)))
+      ORDER BY CASE WHEN NULLIF(:lat, '') IS NULL THEN 0
+                    ELSE ST_Distance(
+                        v.location::geography,
+                        ST_SetSRID(ST_MakePoint(
+                            CAST(NULLIF(:lng, '') AS float8),
+                            CAST(NULLIF(:lat, '') AS float8)), 4326)::geography)
+               END ASC NULLS LAST,
+               v.name ASC
+      """,
+      countQuery = """
+      SELECT count(*)
+      FROM venues v
+      WHERE v.is_active = true
+        AND (:q = '' OR v.name ILIKE '%' || :q || '%' OR v.address ILIKE '%' || :q || '%')
+        AND (NULLIF(:sportId, '') IS NULL OR EXISTS (
+              SELECT 1 FROM courts c
+              WHERE c.venue_id = v.id
+                AND c.is_active = true
+                AND c.sports_id = CAST(NULLIF(:sportId, '') AS uuid)))
+      """,
+      nativeQuery = true)
+  Page<VenueSearchProjection> discoverVenues(
+      @Param("q") String q,
+      @Param("sportId") String sportId,
+      @Param("lat") String lat,
+      @Param("lng") String lng,
+      Pageable pageable
+  );
+
+  /**
    * Find venues with similar names (fuzzy match)
    */
   @Query("SELECT v FROM Venue v WHERE " +

@@ -156,6 +156,28 @@ public class VenueController {
     return ResponseEntity.ok(venueService.searchVenues(sport));
   }
 
+  /**
+   * Unified venue search for the app's search tab.
+   * GET /api/venues/discover?q=river&sportId=...&lat=51.5&lng=-0.12&page=0&size=20
+   * Every parameter is optional: no q = browse all; lat/lng add distance sorting;
+   * sportId narrows to venues with an active court for that sport.
+   */
+  @GetMapping("/discover")
+  public ResponseEntity<Page<com.parth.sportsapp.sportsbackend.dto.VenueSearchResult>> discoverVenues(
+      @RequestParam(name = "q", required = false) String q,
+      @RequestParam(name = "sportId", required = false) UUID sportId,
+      @RequestParam(name = "lat", required = false) @Min(-90) @Max(90) Double lat,
+      @RequestParam(name = "lng", required = false) @Min(-180) @Max(180) Double lng,
+      Pageable pageable) {
+
+    // Location only counts when BOTH halves arrive.
+    if (lat == null || lng == null) {
+      lat = null;
+      lng = null;
+    }
+    return ResponseEntity.ok(venueService.discoverVenues(q, sportId, lat, lng, pageable));
+  }
+
 //  @GetMapping("/nearby")
 //  public List<VenueDto> searchNearby(
 //      @RequestParam double lat,
