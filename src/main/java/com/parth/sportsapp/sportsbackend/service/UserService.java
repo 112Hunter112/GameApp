@@ -31,6 +31,26 @@ public class UserService {
   private PwnedPasswordService pwnedPasswordService;
 
   /**
+   * Upgrade a USER to VENUE_OWNER ("become a host"). Idempotent — calling it
+   * when already an owner just returns the user. Owners keep every player
+   * ability; the role only ADDS hosting rights. The caller (controller) must
+   * mint fresh tokens afterwards, because the role lives inside the JWT.
+   */
+  public User becomeVenueOwner(UUID userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new com.parth.sportsapp.sportsbackend.exception.NotFoundException("User not found"));
+
+    if (user.getRole() == com.parth.sportsapp.sportsbackend.model.UserRole.ADMIN) {
+      return user; // admins already have everything
+    }
+    if (user.getRole() != com.parth.sportsapp.sportsbackend.model.UserRole.VENUE_OWNER) {
+      user.setRole(com.parth.sportsapp.sportsbackend.model.UserRole.VENUE_OWNER);
+      user = userRepository.save(user);
+    }
+    return user;
+  }
+
+  /**
    * Existing search method - Updated to use the new Constructor
    */
   public List<UserSummaryDto> searchUsers(String query) {

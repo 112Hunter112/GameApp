@@ -46,6 +46,7 @@ public class BookingServiceTest {
   @Mock private BookingPolicyService bookingPolicyService;
   @Mock private NotificationService notificationService;
   @Mock private BookingMapper bookingMapper;
+  @Mock private com.parth.sportsapp.sportsbackend.repository.CourtBlockRepository courtBlockRepository;
 
   private User player;
   private User owner;
@@ -149,6 +150,39 @@ public class BookingServiceTest {
     bookingService.createBooking(player.getId(), request(tomorrowAt(10, 0), tomorrowAt(11, 0)));
 
     verify(bookingRepository).save(argThat(b -> b.getStatus() == BookingStatus.PENDING));
+  }
+
+  @Test
+  public void createBooking_blockedByOwner_throws() {
+    stubHappyPath();
+    when(bookingRepository.countConflicts(eq(court.getId()), any(), any())).thenReturn(0L);
+    when(courtBlockRepository.countOverlapping(eq(court.getId()), any(), any())).thenReturn(1L);
+
+    assertThrows(BadRequestException.class, () ->
+        bookingService.createBooking(player.getId(), request(tomorrowAt(10, 0), tomorrowAt(11, 0))));
+    verify(bookingRepository, never()).save(any());
+  }
+
+  @Test
+  public void getAvailability_blockedSlotsUnavailable() {
+    when(courtRepository.findById(court.getId())).thenReturn(Optional.of(court));
+    when(bookingPolicyService.getEffectivePolicy(venue)).thenReturn(policy);
+
+    LocalDate date = LocalDate.now().plusDays(1);
+    com.parth.sportsapp.sportsbackend.model.CourtBlock block =
+        new com.parth.sportsapp.sportsbackend.model.CourtBlock();
+    block.setCourt(court);
+    block.setStartTime(date.atTime(14, 0));
+    block.setEndTime(date.atTime(16, 0));
+    when(courtBlockRepository.findInWindow(eq(court.getId()), any(), any()))
+        .thenReturn(List.of(block));
+
+    CourtAvailabilityResponse availability = bookingService.getAvailability(court.getId(), date);
+
+    assertFalse(slotAt(availability, date.atTime(14, 0)));
+    assertFalse(slotAt(availability, date.atTime(15, 30)));
+    assertTrue(slotAt(availability, date.atTime(13, 30)));
+    assertTrue(slotAt(availability, date.atTime(16, 0)));
   }
 
   @Test

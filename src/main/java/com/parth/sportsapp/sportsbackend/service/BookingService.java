@@ -47,6 +47,7 @@ public class BookingService {
   @Autowired private BookingPolicyService bookingPolicyService;
   @Autowired private BookingMapper bookingMapper;
   @Autowired private NotificationService notificationService;
+  @Autowired private com.parth.sportsapp.sportsbackend.repository.CourtBlockRepository courtBlockRepository;
 
   // ===========================================================================
   // AVAILABILITY
@@ -90,10 +91,12 @@ public class BookingService {
     response.setOpenTime(open.toString());
     response.setCloseTime(close.toString());
 
-    // Existing slot-holding bookings that day
+    // Existing slot-holding bookings + owner blocks that day
     LocalDateTime dayStart = date.atTime(open);
     LocalDateTime dayEnd = date.atTime(close);
     List<Booking> active = bookingRepository.findActiveInWindow(courtId, dayStart, dayEnd);
+    List<com.parth.sportsapp.sportsbackend.model.CourtBlock> blocks =
+        courtBlockRepository.findInWindow(courtId, dayStart, dayEnd);
 
     // Earliest bookable instant (now + notice), so today's past slots show unavailable
     LocalDateTime earliestStart = LocalDateTime.now().plusMinutes(policy.getMinNoticeMinutes());
@@ -102,7 +105,9 @@ public class BookingService {
     int inc = policy.getSlotIncrementMinutes();
     for (LocalDateTime s = dayStart; !s.plusMinutes(inc).isAfter(dayEnd); s = s.plusMinutes(inc)) {
       LocalDateTime e = s.plusMinutes(inc);
-      boolean free = !s.isBefore(earliestStart) && !overlapsAny(active, s, e);
+      boolean free = !s.isBefore(earliestStart)
+          && !overlapsAny(active, s, e)
+          && !blockOverlaps(blocks, s, e);
       slots.add(new TimeSlotDto(s, e, free));
     }
     response.setSlots(slots);
@@ -136,7 +141,8 @@ public class BookingService {
       throw new BadRequestException("You cannot book your own venue");
     }
 
-    if (bookingRepository.countConflicts(court.getId(), start, end) > 0) {
+    if (bookingRepository.countConflicts(court.getId(), start, end) > 0
+        || courtBlockRepository.countOverlapping(court.getId(), start, end) > 0) {
       throw new BadRequestException("That time is no longer available. Please pick another slot.");
     }
 
@@ -370,6 +376,14 @@ public class BookingService {
 
   private boolean overlapsAny(List<Booking> bookings, LocalDateTime s, LocalDateTime e) {
     for (Booking b : bookings) {
+      if (b.getStartTime().isBefore(e) && b.getEndTime().isAfter(s)) return true;
+    }
+    return false;
+  }
+
+  private boolean blockOverlaps(List<com.parth.sportsapp.sportsbackend.model.CourtBlock> blocks,
+                                LocalDateTime s, LocalDateTime e) {
+    for (com.parth.sportsapp.sportsbackend.model.CourtBlock b : blocks) {
       if (b.getStartTime().isBefore(e) && b.getEndTime().isAfter(s)) return true;
     }
     return false;
