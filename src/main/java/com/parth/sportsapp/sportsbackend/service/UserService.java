@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +30,9 @@ public class UserService {
 
   @Autowired
   private PwnedPasswordService pwnedPasswordService;
+
+  @Autowired
+  private RefreshTokenService refreshTokenService;
 
   /**
    * Existing search method - Updated to use the new Constructor
@@ -72,6 +76,7 @@ public class UserService {
   /**
    * Update the profile fields for a given user.
    */
+  @Transactional
   public UserSummaryDto updateProfile(UUID userId, UpdateProfileRequest request) {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
@@ -129,7 +134,14 @@ public class UserService {
 
   /**
    * Change password for a user after verifying the current password.
+   *
+   * <p>Transactional so the password write and the session revocation below
+   * commit (or roll back) together. After a successful change we revoke ALL
+   * refresh tokens — if the password was changed because of suspected
+   * account compromise, the attacker's stolen sessions die within the access
+   * token's 15-minute lifetime.</p>
    */
+  @Transactional
   public void changePassword(UUID userId, String currentPassword, String newPassword) {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new RuntimeException("User not found"));
@@ -148,6 +160,9 @@ public class UserService {
 
     user.setPassword(passwordEncoder.encode(newPassword));
     userRepository.save(user);
+
+    // Kill every existing session: stolen refresh tokens become useless.
+    refreshTokenService.revokeAllForUser(userId);
   }
 
   /**

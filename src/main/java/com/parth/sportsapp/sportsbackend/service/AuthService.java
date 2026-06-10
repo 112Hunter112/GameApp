@@ -6,7 +6,7 @@ import com.parth.sportsapp.sportsbackend.dto.RegisterRequest;
 import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.model.UserRole;
 import com.parth.sportsapp.sportsbackend.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
