@@ -92,6 +92,63 @@ public class NotificationService {
 
 
   // ===========================================================================
+  // FEED (notifications screen + bell badge)
+  // ===========================================================================
+
+  /** Paged feed, newest first, as DTOs (never expose the raw entity/users). */
+  @org.springframework.transaction.annotation.Transactional(readOnly = true)
+  public org.springframework.data.domain.Page<com.parth.sportsapp.sportsbackend.dto.NotificationResponse>
+      getMyNotifications(UUID userId, org.springframework.data.domain.Pageable pageable) {
+    return notificationRepository.findByRecipient_IdOrderByCreatedAtDesc(userId, pageable)
+        .map(this::toResponse);
+  }
+
+  @org.springframework.transaction.annotation.Transactional(readOnly = true)
+  public long getUnreadCount(UUID userId) {
+    return notificationRepository.countByRecipient_IdAndIsReadFalse(userId);
+  }
+
+  @org.springframework.transaction.annotation.Transactional
+  public int markAllAsRead(UUID userId) {
+    return notificationRepository.markAllReadForUser(userId);
+  }
+
+  private com.parth.sportsapp.sportsbackend.dto.NotificationResponse toResponse(Notification n) {
+    com.parth.sportsapp.sportsbackend.dto.NotificationResponse r =
+        new com.parth.sportsapp.sportsbackend.dto.NotificationResponse();
+    r.setId(n.getId());
+    r.setType(n.getType());
+    r.setMessage(n.getMessage());
+    r.setReferenceId(n.getReferenceId());
+    r.setRead(n.isRead());
+    r.setCreatedAt(n.getCreatedAt());
+    if (n.getSender() != null) {
+      r.setSenderId(n.getSender().getId());
+      r.setSenderName(n.getSender().getFirstName() + " " + n.getSender().getLastName());
+      r.setSenderAvatarUrl(n.getSender().getProfilePictureUrl());
+    }
+    return r;
+  }
+
+  // ===========================================================================
+  // FRIENDS
+  // ===========================================================================
+
+  /** Someone sent a friend request. referenceId = friendship id. */
+  public void sendFriendRequest(User receiver, User requester, UUID friendshipId) {
+    String msg = requester.getFirstName() + " " + requester.getLastName() +
+        " sent you a friend request.";
+    saveNotification(receiver, requester, "FRIEND_REQUEST", friendshipId, msg);
+  }
+
+  /** A request you sent was accepted. Notifies the original requester. */
+  public void sendFriendAccepted(User requester, User accepter, UUID friendshipId) {
+    String msg = accepter.getFirstName() + " " + accepter.getLastName() +
+        " accepted your friend request. You're now friends!";
+    saveNotification(requester, accepter, "FRIEND_ACCEPTED", friendshipId, msg);
+  }
+
+  // ===========================================================================
   // BOOKINGS
   // ===========================================================================
 
