@@ -19,3 +19,18 @@ jopiming or leaving a game.
     * Concept: Tuesday at 10 AM should be cheaper than Saturday at 6 PM. Venues need cancellation rules (e.g., "Non-refundable within
       24 hours").
     * Code Needs: A PricingRule entity attached to Courts, and a CancellationPolicy entity.
+
+
+# **Booking Logic**
+
+1. Step 1 (Selection): The user clicks "11:00 AM - 12:00 PM". (This does not create a booking yet).
+2. Step 2 (Checkout): They go to a checkout screen, review the price, select their player limit for the lobby, enter payment info, and
+   click "Confirm & Pay"
+
+We will have semi-open time scheduled eg. [10,11) so [11,12) wont throw a logic erro when we use it.
+
+
+
+
+
+

@@ -5,111 +5,95 @@
     "maxPlayers": 4,
     "scoringType": "SETS",
     "iconUrl": null,
-    "description": "Singles or doubles racquet sport on a hard, clay, or grass court."
-  },
-  {
-    "name": "Badminton",
-    "minPlayers": 2,
-    "maxPlayers": 4,
-    "scoringType": "POINTS",
-    "iconUrl": null,
-    "description": "Indoor shuttlecock racquet sport, played as singles or doubles."
-  },
-  {
-    "name": "Squash",
-    "minPlayers": 2,
-    "maxPlayers": 4,
-    "scoringType": "POINTS",
-    "iconUrl": null,
-    "description": "Fast-paced racquet sport played in an enclosed four-walled court."
-  },
-  {
-    "name": "Table Tennis",
-    "minPlayers": 2,
-    "maxPlayers": 4,
-    "scoringType": "POINTS",
-    "iconUrl": null,
-    "description": "Indoor paddle sport played across a table with a small lightweight ball."
-  },
-  {
-    "name": "Pickleball",
-    "minPlayers": 2,
-    "maxPlayers": 4,
-    "scoringType": "POINTS",
-    "iconUrl": null,
-    "description": "Paddle sport combining elements of tennis, badminton, and ping pong."
-  },
-  {
-    "name": "Padel",
-    "minPlayers": 2,
-    "maxPlayers": 4,
-    "scoringType": "SETS",
-    "iconUrl": null,
-    "description": "Racquet sport played in doubles inside a glass-walled court."
+    "description": "A racket sport played individually against a single opponent or between two teams of two players."
   },
   {
     "name": "Basketball",
-    "minPlayers": 2,
+    "minPlayers": 6,
     "maxPlayers": 10,
     "scoringType": "POINTS",
     "iconUrl": null,
-    "description": "Full-court or half-court ball sport; commonly played 3v3 or 5v5."
+    "description": "A team sport in which two teams, most commonly of five players each, oppose one another on a rectangular court."
+  },
+  {
+    "name": "Soccer (Football)",
+    "minPlayers": 10,
+    "maxPlayers": 22,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "A team sport played with a spherical ball between two teams of 11 players."
   },
   {
     "name": "Volleyball",
     "minPlayers": 4,
     "maxPlayers": 12,
-    "scoringType": "POINTS",
+    "scoringType": "SETS",
     "iconUrl": null,
-    "description": "Net sport played indoors or on sand with two opposing teams."
+    "description": "A team sport in which two teams of six players are separated by a net."
   },
   {
-    "name": "Soccer",
+    "name": "Table Tennis",
     "minPlayers": 2,
-    "maxPlayers": 22,
-    "scoringType": "POINTS",
+    "maxPlayers": 4,
+    "scoringType": "SETS",
     "iconUrl": null,
-    "description": "Field sport played with two teams; goals score one point each."
+    "description": "A sport in which two or four players hit a lightweight ball back and forth across a table using small rackets."
   },
   {
-    "name": "Futsal",
-    "minPlayers": 4,
-    "maxPlayers": 10,
-    "scoringType": "POINTS",
+    "name": "Badminton",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "SETS",
     "iconUrl": null,
-    "description": "Five-a-side indoor variant of soccer, played on a hard court."
-  },
-  {
-    "name": "Cricket",
-    "minPlayers": 4,
-    "maxPlayers": 22,
-    "scoringType": "POINTS",
-    "iconUrl": null,
-    "description": "Bat-and-ball sport between two teams of eleven, played on a pitch."
+    "description": "A racquet sport played using racquets to hit a shuttlecock across a net."
   },
   {
     "name": "Baseball",
-    "minPlayers": 4,
+    "minPlayers": 18,
     "maxPlayers": 18,
     "scoringType": "POINTS",
     "iconUrl": null,
-    "description": "Bat-and-ball sport played on a diamond between two teams of nine."
+    "description": "A bat-and-ball game played between two opposing teams who take turns batting and fielding."
   },
   {
-    "name": "Field Hockey",
-    "minPlayers": 4,
+    "name": "Cricket",
+    "minPlayers": 22,
     "maxPlayers": 22,
     "scoringType": "POINTS",
     "iconUrl": null,
-    "description": "Team sport played on grass or turf with curved sticks and a hard ball."
+    "description": "A bat-and-ball game played between two teams of eleven players on a field at the centre of which is a 22-yard pitch."
   },
   {
-    "name": "Ultimate Frisbee",
-    "minPlayers": 4,
-    "maxPlayers": 14,
+    "name": "American Football",
+    "minPlayers": 22,
+    "maxPlayers": 22,
     "scoringType": "POINTS",
     "iconUrl": null,
-    "description": "Non-contact team sport played with a flying disc on a rectangular field."
+    "description": "A gridiron football game played by two teams of eleven players on a rectangular field with goalposts at each end."
+  },
+  {
+    "name": "Rugby Union",
+    "minPlayers": 14,
+    "maxPlayers": 30,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A close-contact team sport that originated in England in the first half of the 19th century."
+  },
+  {
+    "name": "Ice Hockey",
+    "minPlayers": 12,
+    "maxPlayers": 12,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "A contact team sport played on ice, usually in a rink, in which two teams of skaters use their sticks to shoot a vulcanized rubber puck into their opponent's net to score goals."
+  },
+  {
+    "name": "Field Hockey",
+    "minPlayers": 22,
+    "maxPlayers": 22,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "A widely played team sport of the hockey family, where players use sticks to hit a round, hard, plastic ball towards a goal."
   },
   {
     "name": "Golf",
@@ -117,30 +101,342 @@
     "maxPlayers": 4,
     "scoringType": "POINTS",
     "iconUrl": null,
-    "description": "Course-based sport played with clubs; lower stroke totals win."
+    "description": "A club-and-ball sport in which players use various clubs to hit balls into a series of holes on a course in as few strokes as possible."
   },
   {
-    "name": "Running",
-    "minPlayers": 1,
-    "maxPlayers": 50,
+    "name": "Boxing",
+    "minPlayers": 2,
+    "maxPlayers": 2,
     "scoringType": "TIME",
     "iconUrl": null,
-    "description": "Solo or group endurance activity timed across set distances."
+    "description": "A combat sport in which two people, usually wearing protective gloves and other protective equipment, throw punches at each other for a predetermined set of time in a boxing ring."
+  },
+  {
+    "name": "Mixed Martial Arts (MMA)",
+    "minPlayers": 2,
+    "maxPlayers": 2,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "A full-contact combat sport that allows a wide variety of fighting techniques and skills from a mixture of other combat sports to be used in competition."
+  },
+  {
+    "name": "Wrestling",
+    "minPlayers": 2,
+    "maxPlayers": 2,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A combat sport involving grappling type techniques such as clinch fighting, throws and takedowns, joint locks, pins and other grappling holds."
   },
   {
     "name": "Swimming",
     "minPlayers": 1,
-    "maxPlayers": 50,
+    "maxPlayers": 8,
     "scoringType": "TIME",
     "iconUrl": null,
-    "description": "Pool-based timed sport across multiple stroke and distance categories."
+    "description": "An individual or team racing sport that requires the use of one's entire body to move through water."
+  },
+  {
+    "name": "Athletics (Track and Field)",
+    "minPlayers": 1,
+    "maxPlayers": 8,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "A collection of sports events that involve competitive running, jumping, throwing, and walking."
+  },
+  {
+    "name": "Gymnastics",
+    "minPlayers": 1,
+    "maxPlayers": 6,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A sport that includes physical exercises requiring balance, strength, flexibility, agility, coordination, dedication and endurance."
   },
   {
     "name": "Cycling",
     "minPlayers": 1,
+    "maxPlayers": 20,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "The use of bicycles for transport, recreation, exercise or sport."
+  },
+  {
+    "name": "Pickleball",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "SETS",
+    "iconUrl": null,
+    "description": "A paddleball sport that combines elements of badminton, table tennis, and tennis."
+  },
+  {
+    "name": "Squash",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "SETS",
+    "iconUrl": null,
+    "description": "A racket and ball sport played by two or four players in a four-walled court with a small, hollow rubber ball."
+  },
+  {
+    "name": "Padel",
+    "minPlayers": 4,
+    "maxPlayers": 4,
+    "scoringType": "SETS",
+    "iconUrl": null,
+    "description": "A racket sport of Mexican origin, typically played in doubles on an enclosed court a third the size of a tennis court."
+  },
+  {
+    "name": "Bowling",
+    "minPlayers": 1,
+    "maxPlayers": 6,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A target sport and recreational activity in which a player rolls a ball toward pins or another target."
+  },
+  {
+    "name": "Darts",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "SETS",
+    "iconUrl": null,
+    "description": "A sport in which small missiles are thrown at a circular dartboard fixed to a wall."
+  },
+  {
+    "name": "Snooker",
+    "minPlayers": 2,
+    "maxPlayers": 2,
+    "scoringType": "SETS",
+    "iconUrl": null,
+    "description": "A cue sport played on a rectangular billiard table covered with a green cloth called baize, with pockets at each of the four corners and in the middle of each long side."
+  },
+  {
+    "name": "Pool (Billiards)",
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "scoringType": "SETS",
+    "iconUrl": null,
+    "description": "A classification of cue sports played on a table with six pockets along the rails, into which balls are hit."
+  },
+  {
+    "name": "Water Polo",
+    "minPlayers": 14,
+    "maxPlayers": 14,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "A competitive team sport played in water between two teams of seven players each."
+  },
+  {
+    "name": "Handball",
+    "minPlayers": 14,
+    "maxPlayers": 14,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "A team sport in which two teams of seven players each pass a ball using their hands with the aim of throwing it into the goal of the other team."
+  },
+  {
+    "name": "Lacrosse",
+    "minPlayers": 20,
+    "maxPlayers": 20,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "A team sport played with a lacrosse stick and a lacrosse ball."
+  },
+  {
+    "name": "Netball",
+    "minPlayers": 14,
+    "maxPlayers": 14,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A ball sport played by two teams of seven players, derived from early versions of basketball."
+  },
+  {
+    "name": "Softball",
+    "minPlayers": 18,
+    "maxPlayers": 18,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A game similar to baseball played with a larger ball on a smaller field and with only underhand pitches allowed."
+  },
+  {
+    "name": "Surfing",
+    "minPlayers": 1,
+    "maxPlayers": 4,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A surface water sport in which an individual, a surfer, uses a board to ride on the forward section, or face, of a moving wave of water."
+  },
+  {
+    "name": "Skateboarding",
+    "minPlayers": 1,
+    "maxPlayers": 10,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "An action sport that involves riding and performing tricks using a skateboard."
+  },
+  {
+    "name": "Snowboarding",
+    "minPlayers": 1,
+    "maxPlayers": 4,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A winter sport that involves descending a snow-covered slope while standing on a snowboard attached to a rider's feet."
+  },
+  {
+    "name": "Skiing",
+    "minPlayers": 1,
+    "maxPlayers": 4,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "A recreation, sport and mode of transport that involves moving over snow by the use of a pair of long, flat runners called skis attached or bound to shoes or boots."
+  },
+  {
+    "name": "Rowing",
+    "minPlayers": 1,
+    "maxPlayers": 8,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "The sport of racing boats using oars."
+  },
+  {
+    "name": "Sailing",
+    "minPlayers": 1,
+    "maxPlayers": 8,
+    "scoringType": "TIME",
+    "iconUrl": null,
+    "description": "The employment of wind power to propel a craft over water, ice or land."
+  },
+  {
+    "name": "Equestrian",
+    "minPlayers": 1,
+    "maxPlayers": 1,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "Horse riding, including disciplines such as dressage, eventing, and show jumping."
+  },
+  {
+    "name": "Fencing",
+    "minPlayers": 2,
+    "maxPlayers": 2,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A group of three related combat sports using bladed weapons: the foil, the épée, and the sabre."
+  },
+  {
+    "name": "Judo",
+    "minPlayers": 2,
+    "maxPlayers": 2,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "An unarmed modern Japanese martial art and Olympic sport."
+  },
+  {
+    "name": "Taekwondo",
+    "minPlayers": 2,
+    "maxPlayers": 2,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A Korean martial art, characterized by its emphasis on head-height kicks, jumping and spinning kicks, and fast kicking techniques."
+  },
+  {
+    "name": "Karate",
+    "minPlayers": 2,
+    "maxPlayers": 2,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A martial art developed in the Ryukyu Kingdom, characterized by punching, kicking, knee strikes, elbow strikes and open-hand techniques."
+  },
+  {
+    "name": "Weightlifting",
+    "minPlayers": 1,
+    "maxPlayers": 1,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A sport in which athletes compete in lifting a barbell loaded with weight plates from the ground to overhead."
+  },
+  {
+    "name": "Powerlifting",
+    "minPlayers": 1,
+    "maxPlayers": 1,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A strength sport that consists of three attempts at maximal weight on three lifts: squat, bench press, and deadlift."
+  },
+  {
+    "name": "Archery",
+    "minPlayers": 1,
+    "maxPlayers": 4,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "The sport, practice, or skill of using a bow to shoot arrows."
+  },
+  {
+    "name": "Shooting",
+    "minPlayers": 1,
+    "maxPlayers": 4,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A competitive sport involving tests of proficiency with firearms or other projectile weapons."
+  },
+  {
+    "name": "Triathlon",
+    "minPlayers": 1,
     "maxPlayers": 50,
     "scoringType": "TIME",
     "iconUrl": null,
-    "description": "Road or track endurance sport timed across a set route or distance."
+    "description": "An endurance multisport race consisting of swimming, cycling, and running over various distances."
+  },
+  {
+    "name": "Ultimate Frisbee",
+    "minPlayers": 14,
+    "maxPlayers": 14,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A non-contact team sport played with a flying disc."
+  },
+  {
+    "name": "Spikeball",
+    "minPlayers": 4,
+    "maxPlayers": 4,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A roundnet sport played by two teams of two players, involving hitting a ball off a circular net."
+  },
+  {
+    "name": "Kabaddi",
+    "minPlayers": 14,
+    "maxPlayers": 14,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A contact team sport played between two teams of seven players, originating in ancient India."
+  },
+  {
+    "name": "Sepak Takraw",
+    "minPlayers": 6,
+    "maxPlayers": 6,
+    "scoringType": "SETS",
+    "iconUrl": null,
+    "description": "A sport native to Southeast Asia, resembling volleyball but using a rattan ball and allowing players to use their feet, knees, chest, and head."
+  },
+  {
+    "name": "Bocce",
+    "minPlayers": 2,
+    "maxPlayers": 8,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A ball sport belonging to the boules family, played on a natural soil and asphalt court."
+  },
+  {
+    "name": "Croquet",
+    "minPlayers": 2,
+    "maxPlayers": 6,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A sport that involves hitting wooden or plastic balls with a mallet through hoops embedded in a grass playing court."
+  },
+  {
+    "name": "Polo",
+    "minPlayers": 8,
+    "maxPlayers": 8,
+    "scoringType": "POINTS",
+    "iconUrl": null,
+    "description": "A horseback mounted team sport played with wooden mallets and a small plastic or wooden ball."
   }
 ]

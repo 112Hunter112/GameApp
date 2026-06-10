@@ -1,0 +1,23 @@
+# Properties active ONLY when -Dspring.profiles.active=seed
+# Tunes Hibernate for fast bulk inserts (orders-of-magnitude faster than
+# default INSERT-per-row).
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 100
+        order_inserts: true
+        order_updates: true
+        # Don't bother validating the schema on a seed run.
+        hbm2ddl:
+          auto: update
+    # Don't echo every INSERT — there'll be tens of thousands of them.
+    show-sql: false
+
+# Seed size: SMALL | MEDIUM | LARGE (default SMALL). Override with env var:
+#   APP_SEED_SIZE=MEDIUM ./mvnw spring-boot:run -Dspring-boot.run.profiles=seed
+app:
+  seed:
+    size: ${APP_SEED_SIZE:SMALL}

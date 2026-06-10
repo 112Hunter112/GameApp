@@ -2,14 +2,15 @@ package com.parth.sportsapp.sportsbackend.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.springframework.boot.actuate.endpoint.annotation.Selector;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "bookings")
+@Table(name = "bookings", indexes = {
+    @Index(name = "id_booking_court_time", columnList = "court_id, start_time, end_time")
+})
 public class Booking {
 
   @Id
@@ -33,8 +34,9 @@ public class Booking {
   private LocalDateTime endTime;
 
   // Status: PENDING, CONFIRMED, CANCELLED
+  @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private String status = "PENDING";
+  private BookingStatus status = BookingStatus.PENDING;
 
   @Column(name = "total_price", precision = 10, scale = 2)
   private BigDecimal totalPrice;
@@ -85,8 +87,8 @@ public class Booking {
   public LocalDateTime getEndTime() { return endTime; }
   public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
 
-  public String getStatus() { return status; }
-  public void setStatus(String status) { this.status = status; }
+  public BookingStatus getStatus() { return status; }
+  public void setStatus(BookingStatus status) { this.status = status; }
 
   public BigDecimal getTotalPrice() { return totalPrice; }
   public void setTotalPrice(BigDecimal totalPrice) { this.totalPrice = totalPrice; }
