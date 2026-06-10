@@ -107,6 +107,11 @@ public class SecurityConfig {
             // Public discovery endpoints
             .requestMatchers(HttpMethod.GET, "/api/venues/search", "/api/venues/nearby").permitAll()
 
+            // Public booking discovery: availability grid + venue booking rules,
+            // so players can browse times before signing in. Writing requires auth.
+            .requestMatchers(HttpMethod.GET, "/api/courts/*/availability").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/venues/*/booking-policy").permitAll()
+
             // Public auth endpoints (login, register, verify)
             .requestMatchers("/api/auth/**").permitAll()
             .requestMatchers("/hello").permitAll()

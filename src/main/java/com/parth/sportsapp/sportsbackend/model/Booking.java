@@ -2,7 +2,6 @@ package com.parth.sportsapp.sportsbackend.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.springframework.boot.actuate.endpoint.annotation.Selector;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -32,9 +31,9 @@ public class Booking {
   @Column(name = "end_time", nullable = false)
   private LocalDateTime endTime;
 
-  // Status: PENDING, CONFIRMED, CANCELLED
+  @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private String status = "PENDING";
+  private BookingStatus status = BookingStatus.PENDING;
 
   @Column(name = "total_price", precision = 10, scale = 2)
   private BigDecimal totalPrice;
@@ -48,14 +47,29 @@ public class Booking {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "payment_method")
-  private PaymentMethod paymentMethod = PaymentMethod.SPLIT; // CARD, APPLE_PAY
+  private PaymentMethod paymentMethod = PaymentMethod.CASH; // pay-at-venue until Stripe lands
+
+  /** Optional note from the player to the venue ("we need 4 rackets", etc.). */
+  @Column(columnDefinition = "TEXT")
+  private String notes;
 
   @CreationTimestamp
   @Column(name = "created_at", updatable = false)
   private LocalDateTime createdAt;
 
+  @Column(name = "confirmed_at")
+  private LocalDateTime confirmedAt;
+
   @Column(name = "cancelled_at")
   private LocalDateTime cancelledAt;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "cancelled_by")
+  private CancellationActor cancelledBy;
+
+  /** Reason supplied on owner decline / either party's cancel. Shown to the other side. */
+  @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+  private String cancellationReason;
 
   /**
    * Bidirectional One-to-One relationship with Match.
@@ -85,8 +99,8 @@ public class Booking {
   public LocalDateTime getEndTime() { return endTime; }
   public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
 
-  public String getStatus() { return status; }
-  public void setStatus(String status) { this.status = status; }
+  public BookingStatus getStatus() { return status; }
+  public void setStatus(BookingStatus status) { this.status = status; }
 
   public BigDecimal getTotalPrice() { return totalPrice; }
   public void setTotalPrice(BigDecimal totalPrice) { this.totalPrice = totalPrice; }
@@ -105,6 +119,18 @@ public class Booking {
 
   public LocalDateTime getCancelledAt() { return cancelledAt; }
   public void setCancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; }
+
+  public String getNotes() { return notes; }
+  public void setNotes(String notes) { this.notes = notes; }
+
+  public LocalDateTime getConfirmedAt() { return confirmedAt; }
+  public void setConfirmedAt(LocalDateTime confirmedAt) { this.confirmedAt = confirmedAt; }
+
+  public CancellationActor getCancelledBy() { return cancelledBy; }
+  public void setCancelledBy(CancellationActor cancelledBy) { this.cancelledBy = cancelledBy; }
+
+  public String getCancellationReason() { return cancellationReason; }
+  public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
 
   public Match getMatch() {
     return match;

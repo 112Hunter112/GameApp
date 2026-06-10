@@ -1,13 +1,27 @@
 package com.parth.sportsapp.sportsbackend.repository;
 
 import com.parth.sportsapp.sportsbackend.model.Courts;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface CourtRepository extends JpaRepository<Courts, UUID> {
+
+  /**
+   * Lock the court row (SELECT ... FOR UPDATE) for the duration of the transaction.
+   * BookingService takes this lock before checking for conflicting bookings so that
+   * two players hitting "Book" at the same instant cannot both pass the check.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT c FROM Courts c WHERE c.id = :id")
+  Optional<Courts> findByIdForUpdate(@Param("id") UUID id);
 
 
   //  ---- Find all possible courts at the venue

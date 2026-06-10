@@ -91,6 +91,63 @@ public class NotificationService {
 
 
 
+  // ===========================================================================
+  // BOOKINGS
+  // ===========================================================================
+
+  /**
+   * New booking landed (instant-book) or was requested (request-to-book).
+   * Notifies the venue owner either way — they always want to know.
+   */
+  public void sendBookingCreated(User owner, User player, com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    String when = formatBookingTime(booking);
+    String court = booking.getCourt().getCourtNumber();
+    String msg = booking.getStatus() == com.parth.sportsapp.sportsbackend.model.BookingStatus.PENDING
+        ? player.getFirstName() + " " + player.getLastName() + " requested " + court + " on " + when + ". Tap to confirm or decline."
+        : player.getFirstName() + " " + player.getLastName() + " booked " + court + " on " + when + ".";
+    String type = booking.getStatus() == com.parth.sportsapp.sportsbackend.model.BookingStatus.PENDING
+        ? "BOOKING_REQUESTED" : "BOOKING_CREATED";
+    saveNotification(owner, player, type, booking.getId(), msg);
+  }
+
+  /** Owner approved a pending request. Notifies the player. */
+  public void sendBookingConfirmed(User player, com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    String msg = "Booking confirmed! " + booking.getCourt().getVenue().getName() +
+        " — " + booking.getCourt().getCourtNumber() + ", " + formatBookingTime(booking) + ".";
+    saveNotification(player, null, "BOOKING_CONFIRMED", booking.getId(), msg);
+  }
+
+  /** Owner declined a pending request. Notifies the player. */
+  public void sendBookingDeclined(User player, com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    String reason = booking.getCancellationReason();
+    String msg = "Your booking request at " + booking.getCourt().getVenue().getName() +
+        " for " + formatBookingTime(booking) + " was declined" +
+        (reason != null ? ": " + reason : ".");
+    saveNotification(player, null, "BOOKING_DECLINED", booking.getId(), msg);
+  }
+
+  /** Player cancelled. Notifies the venue owner. */
+  public void sendBookingCancelledByPlayer(User owner, User player, com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    String msg = player.getFirstName() + " " + player.getLastName() + " cancelled their booking of " +
+        booking.getCourt().getCourtNumber() + " on " + formatBookingTime(booking) + ".";
+    saveNotification(owner, player, "BOOKING_CANCELLED", booking.getId(), msg);
+  }
+
+  /** Venue cancelled. Notifies the player. */
+  public void sendBookingCancelledByVenue(User player, com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    String reason = booking.getCancellationReason();
+    String msg = booking.getCourt().getVenue().getName() + " cancelled your booking for " +
+        formatBookingTime(booking) + (reason != null ? ": " + reason : ". Sorry about that!");
+    saveNotification(player, null, "BOOKING_CANCELLED", booking.getId(), msg);
+  }
+
+  private String formatBookingTime(com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    java.time.format.DateTimeFormatter day = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM");
+    java.time.format.DateTimeFormatter time = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+    return booking.getStartTime().format(day) + ", " +
+        booking.getStartTime().format(time) + "–" + booking.getEndTime().format(time);
+  }
+
   private void saveNotification(User recipient, User sender, String type, UUID referenceId, String message) {
     Notification notification = new Notification();
     notification.setRecipient(recipient);
