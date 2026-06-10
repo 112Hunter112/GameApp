@@ -91,6 +91,26 @@ public class NotificationService {
 
 
 
+  /**
+   * Smart Fill: tell a nearby matching player that a court slot just opened
+   * up at a venue near them. referenceId = the court, so the client can deep
+   * link straight into the booking flow.
+   */
+  public void sendSmartFillOffer(User recipient, UUID courtId, String message) {
+    saveNotification(recipient, null, "SMART_FILL_OFFER", courtId, message);
+  }
+
+  /**
+   * Fairness: the player must always know when a venue marked them as a
+   * no-show — their reliability score is affected, so silent marking would
+   * be a trust violation. referenceId = the booking.
+   */
+  public void sendNoShowMarked(User recipient, UUID bookingId, String venueName) {
+    String msg = "You were marked as a no-show for your booking at " + venueName
+        + ". If this is a mistake, please contact the venue.";
+    saveNotification(recipient, null, "NO_SHOW_MARKED", bookingId, msg);
+  }
+
   private void saveNotification(User recipient, User sender, String type, UUID referenceId, String message) {
     Notification notification = new Notification();
     notification.setRecipient(recipient);

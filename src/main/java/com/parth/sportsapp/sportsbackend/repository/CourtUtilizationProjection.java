@@ -10,6 +10,7 @@ import java.util.UUID;
 public interface CourtUtilizationProjection {
   UUID getCourtId();
   String getCourtNumber();
+  java.math.BigDecimal getHourlyRate();
   Long getBookingCount();
   Double getBookedHours();
 }

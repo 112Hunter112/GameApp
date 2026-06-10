@@ -166,6 +166,25 @@ public class UserService {
   }
 
   /**
+   * Refresh the user's coarse last-known location (called from the home-feed
+   * endpoint, which already receives the client's GPS). Powers Smart Fill.
+   * Best-effort: failures must never break the home feed.
+   */
+  @Transactional
+  public void updateLastKnownLocation(UUID userId, double lat, double lng) {
+    userRepository.findById(userId).ifPresent(user -> {
+      org.locationtech.jts.geom.GeometryFactory gf =
+          new org.locationtech.jts.geom.GeometryFactory(
+              new org.locationtech.jts.geom.PrecisionModel(), 4326);
+      org.locationtech.jts.geom.Point p =
+          gf.createPoint(new org.locationtech.jts.geom.Coordinate(lng, lat));
+      p.setSRID(4326);
+      user.setLastKnownLocation(p);
+      userRepository.save(user);
+    });
+  }
+
+  /**
    * Find user ID by email (for authentication)
    */
   public UUID findUserIdByEmail(String email) {

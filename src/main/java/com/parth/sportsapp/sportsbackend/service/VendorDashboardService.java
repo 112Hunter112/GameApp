@@ -42,11 +42,17 @@ public class VendorDashboardService {
 
   private final BookingRepository bookingRepository;
   private final VenueRepository venueRepository;
+  private final PlayerReliabilityService reliabilityService;
+  private final NotificationService notificationService;
 
   public VendorDashboardService(BookingRepository bookingRepository,
-                                VenueRepository venueRepository) {
+                                VenueRepository venueRepository,
+                                PlayerReliabilityService reliabilityService,
+                                NotificationService notificationService) {
     this.bookingRepository = bookingRepository;
     this.venueRepository = venueRepository;
+    this.reliabilityService = reliabilityService;
+    this.notificationService = notificationService;
   }
 
   // =====================================================================
@@ -82,11 +88,11 @@ public class VendorDashboardService {
         bookingRepository.countByCourt_Venue_IdAndStatusAndStartTimeBetween(
             venueId, BookingStatus.CANCELLED, thirtyDaysAgo, now));
 
-    // Next 7 days of schedule, capped.
+    // Next 7 days of schedule, capped, annotated with player reliability.
     Page<Booking> upcoming = bookingRepository
         .findByCourt_Venue_IdAndStartTimeBetweenOrderByStartTimeAsc(
             venueId, now, now.plusDays(7), PageRequest.of(0, UPCOMING_LIMIT));
-    res.setUpcomingBookings(upcoming.getContent().stream().map(this::toEntry).toList());
+    res.setUpcomingBookings(toAnnotatedEntries(upcoming.getContent()));
 
     // Utilization over the trailing 30 days.
     res.setCourtUtilization(
@@ -116,9 +122,205 @@ public class VendorDashboardService {
     if (from.plusDays(92).isBefore(to)) {
       throw new BadRequestException("Window too large — max 92 days");
     }
-    return bookingRepository
-        .findByCourt_Venue_IdAndStartTimeBetweenOrderByStartTimeAsc(venueId, from, to, pageable)
-        .map(this::toEntry);
+    Page<Booking> page = bookingRepository
+        .findByCourt_Venue_IdAndStartTimeBetweenOrderByStartTimeAsc(venueId, from, to, pageable);
+    List<VendorBookingEntry> annotated = toAnnotatedEntries(page.getContent());
+    return new org.springframework.data.domain.PageImpl<>(annotated, pageable, page.getTotalElements());
+  }
+
+  // =====================================================================
+  // Owner rollup — all venues combined (multi-venue owners)
+  // =====================================================================
+
+  @Transactional(readOnly = true)
+  public com.parth.sportsapp.sportsbackend.dto.OwnerOverviewResponse getOwnerOverview(UUID vendorId) {
+    List<Venue> venues = venueRepository.findByOwner_Id(vendorId);
+
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+    LocalDateTime startOfWeek  = LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay();
+    LocalDateTime startOfMonth = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+    LocalDateTime thirtyDaysAgo = now.minusDays(30);
+
+    var overview = new com.parth.sportsapp.sportsbackend.dto.OwnerOverviewResponse();
+    java.math.BigDecimal weekTotal = java.math.BigDecimal.ZERO;
+    java.math.BigDecimal monthTotal = java.math.BigDecimal.ZERO;
+    long today = 0, noShows = 0, cancels = 0;
+    var perVenue = new java.util.ArrayList<com.parth.sportsapp.sportsbackend.dto.OwnerOverviewResponse.VenueSummary>();
+
+    for (Venue v : venues) {
+      java.math.BigDecimal vWeek = bookingRepository.sumRevenue(
+          v.getId(), REVENUE_STATUSES, startOfWeek, now);
+      java.math.BigDecimal vMonth = bookingRepository.sumRevenue(
+          v.getId(), REVENUE_STATUSES, startOfMonth, now);
+      long vToday = bookingRepository.countByCourt_Venue_IdAndStatusAndStartTimeBetween(
+          v.getId(), BookingStatus.CONFIRMED, startOfToday, startOfToday.plusDays(1));
+      long vNoShows = bookingRepository.countByCourt_Venue_IdAndStatusAndStartTimeBetween(
+          v.getId(), BookingStatus.NO_SHOW, thirtyDaysAgo, now);
+      long vCancels = bookingRepository.countByCourt_Venue_IdAndStatusAndStartTimeBetween(
+          v.getId(), BookingStatus.CANCELLED, thirtyDaysAgo, now);
+
+      weekTotal = weekTotal.add(vWeek);
+      monthTotal = monthTotal.add(vMonth);
+      today += vToday;
+      noShows += vNoShows;
+      cancels += vCancels;
+
+      var s = new com.parth.sportsapp.sportsbackend.dto.OwnerOverviewResponse.VenueSummary();
+      s.setVenueId(v.getId());
+      s.setVenueName(v.getName());
+      s.setRevenueThisMonth(vMonth);
+      s.setBookingsToday(vToday);
+      perVenue.add(s);
+    }
+
+    // Biggest earners first.
+    perVenue.sort((a, b) -> b.getRevenueThisMonth().compareTo(a.getRevenueThisMonth()));
+
+    overview.setTotalVenues(venues.size());
+    overview.setRevenueThisWeek(weekTotal);
+    overview.setRevenueThisMonth(monthTotal);
+    overview.setBookingsToday(today);
+    overview.setNoShowsLast30Days(noShows);
+    overview.setCancellationsLast30Days(cancels);
+    overview.setVenues(perVenue);
+    return overview;
+  }
+
+  // =====================================================================
+  // Hour-of-week occupancy heatmap
+  // =====================================================================
+
+  @Transactional(readOnly = true)
+  public com.parth.sportsapp.sportsbackend.dto.HeatmapResponse getHeatmap(
+      UUID vendorId, UUID venueId, int windowDays) {
+    requireOwnedVenue(vendorId, venueId);
+    if (windowDays < 7 || windowDays > 365) {
+      throw new BadRequestException("windowDays must be 7-365");
+    }
+    LocalDateTime now = LocalDateTime.now();
+    var cells = bookingRepository.occupancyHeatmap(venueId, now.minusDays(windowDays), now)
+        .stream()
+        .map(c -> new com.parth.sportsapp.sportsbackend.dto.HeatmapResponse.Cell(
+            c.getDayOfWeek() == null ? 0 : c.getDayOfWeek(),
+            c.getHourOfDay() == null ? 0 : c.getHourOfDay(),
+            c.getBookingCount() == null ? 0 : c.getBookingCount()))
+        .toList();
+    return new com.parth.sportsapp.sportsbackend.dto.HeatmapResponse(venueId, windowDays, cells);
+  }
+
+  // =====================================================================
+  // CSV export — for the vendor's accountant
+  // =====================================================================
+
+  /** Same data as the schedule view, as a downloadable CSV. */
+  @Transactional(readOnly = true)
+  public String exportBookingsCsv(UUID vendorId, UUID venueId,
+                                  LocalDateTime from, LocalDateTime to) {
+    requireOwnedVenue(vendorId, venueId);
+    if (from == null || to == null || !to.isAfter(from)) {
+      throw new BadRequestException("Invalid time window");
+    }
+    if (from.plusDays(366).isBefore(to)) {
+      throw new BadRequestException("Window too large — max 1 year");
+    }
+
+    Page<Booking> page = bookingRepository
+        .findByCourt_Venue_IdAndStartTimeBetweenOrderByStartTimeAsc(
+            venueId, from, to, PageRequest.of(0, 10_000));
+
+    StringBuilder csv = new StringBuilder(
+        "booking_id,court,player,start_time,end_time,status,payment_status,total_price\n");
+    for (Booking b : page.getContent()) {
+      VendorBookingEntry e = toEntry(b);
+      csv.append(csvField(e.getBookingId()))
+          .append(',').append(csvField(e.getCourtNumber()))
+          .append(',').append(csvField(e.getPlayerName()))
+          .append(',').append(csvField(e.getStartTime()))
+          .append(',').append(csvField(e.getEndTime()))
+          .append(',').append(csvField(e.getStatus()))
+          .append(',').append(csvField(e.getPaymentStatus()))
+          .append(',').append(csvField(e.getTotalPrice()))
+          .append('\n');
+    }
+    return csv.toString();
+  }
+
+  /** Quote-and-escape a CSV field (handles commas, quotes, nulls). */
+  private static String csvField(Object value) {
+    if (value == null) return "";
+    String s = value.toString();
+    if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
+      return '"' + s.replace("\"", "\"\"") + '"';
+    }
+    return s;
+  }
+
+  // =====================================================================
+  // Revenue left on the table
+  // =====================================================================
+
+  /**
+   * Estimates what each court's EMPTY hours would have earned over the
+   * trailing window. The open-hours assumption is a flat hours/day figure
+   * for now — swap in real venue opening hours once that JSONB schema is
+   * finalized. This is the report that quantifies under-utilization for
+   * the vendor ("Court 2 left ~$440 unbooked last month").
+   */
+  @Transactional(readOnly = true)
+  public com.parth.sportsapp.sportsbackend.dto.RevenueReportResponse getRevenueReport(
+      UUID vendorId, UUID venueId, int windowDays, int openHoursPerDay) {
+    Venue venue = requireOwnedVenue(vendorId, venueId);
+    if (windowDays < 1 || windowDays > 365) {
+      throw new BadRequestException("windowDays must be 1-365");
+    }
+    if (openHoursPerDay < 1 || openHoursPerDay > 24) {
+      throw new BadRequestException("openHoursPerDay must be 1-24");
+    }
+
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime from = now.minusDays(windowDays);
+    double bookableHours = (double) windowDays * openHoursPerDay;
+
+    var report = new com.parth.sportsapp.sportsbackend.dto.RevenueReportResponse();
+    report.setVenueId(venue.getId());
+    report.setVenueName(venue.getName());
+    report.setWindowDays(windowDays);
+    report.setAssumedOpenHoursPerDay(openHoursPerDay);
+
+    java.math.BigDecimal totalMissed = java.math.BigDecimal.ZERO;
+    double totalEmpty = 0;
+    var rows = new java.util.ArrayList<com.parth.sportsapp.sportsbackend.dto.RevenueReportResponse.CourtRevenueRow>();
+
+    for (var u : bookingRepository.courtUtilization(venueId, from, now)) {
+      double booked = u.getBookedHours() == null ? 0 : u.getBookedHours();
+      double empty = Math.max(0, bookableHours - booked);
+      java.math.BigDecimal rate = u.getHourlyRate() == null
+          ? java.math.BigDecimal.ZERO : u.getHourlyRate();
+      java.math.BigDecimal missed = rate.multiply(java.math.BigDecimal.valueOf(empty))
+          .setScale(2, java.math.RoundingMode.HALF_UP);
+
+      var row = new com.parth.sportsapp.sportsbackend.dto.RevenueReportResponse.CourtRevenueRow();
+      row.setCourtId(u.getCourtId());
+      row.setCourtNumber(u.getCourtNumber());
+      row.setHourlyRate(rate);
+      row.setBookedHours(Math.round(booked * 10.0) / 10.0);
+      row.setEmptyHours(Math.round(empty * 10.0) / 10.0);
+      row.setUtilizationPct(bookableHours == 0 ? 0
+          : Math.round(booked / bookableHours * 1000.0) / 10.0);
+      row.setMissedRevenue(missed);
+      rows.add(row);
+
+      totalMissed = totalMissed.add(missed);
+      totalEmpty += empty;
+    }
+
+    // Worst offenders first — that's what the vendor needs to act on.
+    rows.sort((a, b) -> b.getMissedRevenue().compareTo(a.getMissedRevenue()));
+    report.setCourts(rows);
+    report.setTotalMissedRevenue(totalMissed);
+    report.setTotalEmptyHours(Math.round(totalEmpty * 10.0) / 10.0);
+    return report;
   }
 
   // =====================================================================
@@ -150,9 +352,18 @@ public class VendorDashboardService {
     }
 
     booking.setStatus(BookingStatus.NO_SHOW);
+    booking.setNoShowMarkedAt(LocalDateTime.now());
     bookingRepository.save(booking);
-    // TODO(reliability): when the player reliability score lands, increment
-    // the no-show counter on the player's profile here.
+
+    // Fairness: the player must know — their reliability score is affected.
+    // (Reliability itself is computed live from booking statuses, so no
+    // counters to increment here.)
+    if (booking.getUser() != null) {
+      notificationService.sendNoShowMarked(
+          booking.getUser(),
+          booking.getId(),
+          booking.getCourt().getVenue().getName());
+    }
   }
 
   // --- helpers ---------------------------------------------------------
@@ -164,6 +375,30 @@ public class VendorDashboardService {
       throw new ForbiddenException("You do not own this venue");
     }
     return venue;
+  }
+
+  /**
+   * Map bookings to entries and annotate each with the player's network-wide
+   * reliability. ONE batch query for the whole page (no N+1).
+   */
+  private List<VendorBookingEntry> toAnnotatedEntries(List<Booking> bookings) {
+    var userIds = bookings.stream()
+        .map(b -> b.getUser() == null ? null : b.getUser().getId())
+        .filter(java.util.Objects::nonNull)
+        .collect(java.util.stream.Collectors.toSet());
+    var reliability = reliabilityService.forUsers(userIds);
+
+    return bookings.stream().map(b -> {
+      VendorBookingEntry e = toEntry(b);
+      if (b.getUser() != null) {
+        var r = reliability.get(b.getUser().getId());
+        if (r != null) {
+          e.setPlayerReliabilityTier(r.tier().name());
+          e.setPlayerNoShowRate(Math.round(r.noShowRate() * 100.0) / 100.0);
+        }
+      }
+      return e;
+    }).toList();
   }
 
   private VendorBookingEntry toEntry(Booking b) {

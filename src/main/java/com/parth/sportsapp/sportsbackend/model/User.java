@@ -118,6 +118,16 @@ public class User {
   @Column(name = "google_id", unique = true)
   private String googleId;
 
+  /**
+   * Coarse last-known location, refreshed when the user loads their home feed.
+   * Powers Smart Fill (offering empty court slots to nearby players). Never
+   * serialized to other clients, never used for anything user-facing beyond
+   * the user's own offers. Null until the user first opens the home screen.
+   */
+  @JsonIgnore
+  @Column(name = "last_known_location", columnDefinition = "geometry(Point, 4326)")
+  private org.locationtech.jts.geom.Point lastKnownLocation;
+
   // 1. Existing mapping (Keep this)
   // Maps to: private User createdByUser; in Match.java
   @OneToMany(mappedBy = "createdByUser", fetch = FetchType.LAZY)
@@ -303,6 +313,14 @@ public class User {
 
   public void setGoogleId(String googleId) {
     this.googleId = googleId;
+  }
+
+  public org.locationtech.jts.geom.Point getLastKnownLocation() {
+    return lastKnownLocation;
+  }
+
+  public void setLastKnownLocation(org.locationtech.jts.geom.Point lastKnownLocation) {
+    this.lastKnownLocation = lastKnownLocation;
   }
 
   public boolean isEmailNotificationsEnabled() {

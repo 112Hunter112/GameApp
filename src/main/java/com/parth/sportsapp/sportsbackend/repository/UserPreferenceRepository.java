@@ -37,4 +37,43 @@ public interface UserPreferenceRepository extends JpaRepository<UserPreference, 
   @Modifying(clearAutomatically = true)
   @Query("UPDATE UserPreference p SET p.isPrimarySport = false WHERE p.user.id = :userId AND p.isPrimarySport = true")
   int clearPrimaryForUser(@Param("userId") UUID userId);
+
+  /**
+   * Smart Fill targeting: players who
+   * <ul>
+   *   <li>play the given sport and are open to matchmaking,</li>
+   *   <li>are available on the slot's day type (weekday/weekend),</li>
+   *   <li>were last seen within their own notification radius of the venue
+   *       (default 15 km when they haven't set one).</li>
+   * </ul>
+   * Ordered by distance so the closest players are notified first when the
+   * candidate pool exceeds the cap.
+   */
+  @Query(value = """
+      SELECT u.id         AS user_id,
+             u.first_name AS first_name
+      FROM user_preferences p
+      JOIN users u ON u.id = p.user_id
+      WHERE p.sport_id = :sportId
+        AND p.open_to_matchmaking = true
+        AND (CASE WHEN :isWeekend THEN p.available_weekends
+                  ELSE p.available_weekdays END) = true
+        AND u.last_known_location IS NOT NULL
+        AND ST_DWithin(
+            u.last_known_location::geography,
+            ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+            COALESCE(p.notification_radius_meters, 15000)
+        )
+      ORDER BY ST_Distance(
+            u.last_known_location::geography,
+            ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography
+        ) ASC
+      LIMIT :maxCandidates
+      """, nativeQuery = true)
+  List<SmartFillCandidateProjection> findSmartFillCandidates(
+      @Param("sportId") UUID sportId,
+      @Param("lat") double venueLat,
+      @Param("lng") double venueLng,
+      @Param("isWeekend") boolean isWeekend,
+      @Param("maxCandidates") int maxCandidates);
 }

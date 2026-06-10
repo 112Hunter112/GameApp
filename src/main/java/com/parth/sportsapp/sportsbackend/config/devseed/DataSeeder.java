@@ -193,6 +193,15 @@ public class DataSeeder implements ApplicationRunner {
       u.setUpdatedAt(LocalDateTime.now());
       u.setEmailNotificationsEnabled(true);
       u.setPushNotificationsEnabled(true);
+
+      // Coarse last-known location near a metro — makes Smart Fill demoable.
+      double[] metro = METRO_CENTERS[i % METRO_CENTERS.length];
+      Point home = GF.createPoint(new Coordinate(
+          metro[1] + (rnd.nextDouble() - 0.5) * 0.3,
+          metro[0] + (rnd.nextDouble() - 0.5) * 0.3));
+      home.setSRID(4326);
+      u.setLastKnownLocation(home);
+
       batch.add(u);
       if (batch.size() >= 1000) {
         all.addAll(userRepository.saveAll(batch));

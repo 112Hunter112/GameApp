@@ -65,6 +65,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
   @Query(value = """
       SELECT c.id                                    AS court_id,
              c.court_number                          AS court_number,
+             c.hourly_rate                           AS hourly_rate,
              COUNT(b.id)                             AS booking_count,
              COALESCE(SUM(EXTRACT(EPOCH FROM (b.end_time - b.start_time)) / 3600.0), 0) AS booked_hours
       FROM courts c
@@ -73,12 +74,46 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             AND b.status IN ('CONFIRMED', 'COMPLETED')
             AND b.start_time >= :from AND b.start_time < :to
       WHERE c.venue_id = :venueId
-      GROUP BY c.id, c.court_number
+      GROUP BY c.id, c.court_number, c.hourly_rate
       ORDER BY booked_hours DESC
       """, nativeQuery = true)
   List<CourtUtilizationProjection> courtUtilization(@Param("venueId") UUID venueId,
                                                     @Param("from") LocalDateTime from,
                                                     @Param("to") LocalDateTime to);
+
+  /**
+   * Hour-of-week occupancy heatmap: booking counts grouped by ISO day-of-week
+   * (1 = Monday … 7 = Sunday) and hour of day. The grid that shows a vendor
+   * exactly WHERE their dead hours are — and therefore where to aim Smart Fill.
+   */
+  @Query(value = """
+      SELECT EXTRACT(ISODOW FROM b.start_time)::int AS day_of_week,
+             EXTRACT(HOUR   FROM b.start_time)::int AS hour_of_day,
+             COUNT(*)                                AS booking_count
+      FROM bookings b
+      JOIN courts c ON c.id = b.court_id
+      WHERE c.venue_id = :venueId
+        AND b.status IN ('CONFIRMED', 'COMPLETED')
+        AND b.start_time >= :from AND b.start_time < :to
+      GROUP BY 1, 2
+      ORDER BY 1, 2
+      """, nativeQuery = true)
+  List<HeatmapCellProjection> occupancyHeatmap(@Param("venueId") UUID venueId,
+                                               @Param("from") LocalDateTime from,
+                                               @Param("to") LocalDateTime to);
+
+  // =====================================================================
+  // Player reliability — counts per status for a set of users in one query
+  // (avoids N+1 when annotating a schedule page with reliability tiers).
+  // =====================================================================
+
+  @Query("""
+      SELECT b.user.id AS userId, b.status AS status, COUNT(b) AS cnt
+      FROM Booking b
+      WHERE b.user.id IN :userIds
+      GROUP BY b.user.id, b.status
+      """)
+  List<UserStatusCountProjection> countStatusesForUsers(@Param("userIds") Collection<UUID> userIds);
 
   // =====================================================================
   // TODO(booking-flow): add overlap detection here when building the

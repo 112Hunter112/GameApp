@@ -29,9 +29,12 @@ import java.util.UUID;
 public class HomeController {
 
   private final HomeFeedService homeFeedService;
+  private final com.parth.sportsapp.sportsbackend.service.UserService userService;
 
-  public HomeController(HomeFeedService homeFeedService) {
+  public HomeController(HomeFeedService homeFeedService,
+                        com.parth.sportsapp.sportsbackend.service.UserService userService) {
     this.homeFeedService = homeFeedService;
+    this.userService = userService;
   }
 
   @GetMapping
@@ -43,6 +46,12 @@ public class HomeController {
       @RequestParam(required = false) UUID sportId,
       @RequestParam(required = false) Integer limit
   ) {
+    // Refresh the user's coarse location for Smart Fill targeting.
+    // Best-effort: never let it break the feed.
+    try {
+      userService.updateLastKnownLocation(user.getId(), latitude, longitude);
+    } catch (Exception ignored) { /* feed must render regardless */ }
+
     return homeFeedService.build(user.getId(), latitude, longitude, radiusMeters, sportId, limit);
   }
 }

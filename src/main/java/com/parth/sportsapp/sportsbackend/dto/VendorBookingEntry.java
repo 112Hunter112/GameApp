@@ -23,6 +23,10 @@ public class VendorBookingEntry {
   private PaymentStatus paymentStatus;
   private BigDecimal totalPrice;
 
+  // Network-level reliability of the booking player (computed, not stored).
+  private String playerReliabilityTier;  // NEW | EXCELLENT | GOOD | FAIR | POOR
+  private Double playerNoShowRate;       // 0.0 - 1.0
+
   public VendorBookingEntry() {}
 
   public VendorBookingEntry(UUID bookingId, String courtNumber, String playerName,
@@ -62,4 +66,10 @@ public class VendorBookingEntry {
 
   public BigDecimal getTotalPrice() { return totalPrice; }
   public void setTotalPrice(BigDecimal v) { this.totalPrice = v; }
+
+  public String getPlayerReliabilityTier() { return playerReliabilityTier; }
+  public void setPlayerReliabilityTier(String v) { this.playerReliabilityTier = v; }
+
+  public Double getPlayerNoShowRate() { return playerNoShowRate; }
+  public void setPlayerNoShowRate(Double v) { this.playerNoShowRate = v; }
 }

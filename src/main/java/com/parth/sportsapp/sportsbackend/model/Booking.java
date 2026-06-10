@@ -59,6 +59,10 @@ public class Booking {
   @Column(name = "cancelled_at")
   private LocalDateTime cancelledAt;
 
+  /** When the venue marked this booking as a no-show (audit trail for disputes). */
+  @Column(name = "no_show_marked_at")
+  private LocalDateTime noShowMarkedAt;
+
   /**
    * Bidirectional One-to-One relationship with Match.
    * mappedBy points to the 'booking' field inside the Match entity.
@@ -107,6 +111,9 @@ public class Booking {
 
   public LocalDateTime getCancelledAt() { return cancelledAt; }
   public void setCancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; }
+
+  public LocalDateTime getNoShowMarkedAt() { return noShowMarkedAt; }
+  public void setNoShowMarkedAt(LocalDateTime v) { this.noShowMarkedAt = v; }
 
   public Match getMatch() {
     return match;
