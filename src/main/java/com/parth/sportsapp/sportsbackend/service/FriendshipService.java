@@ -26,6 +26,7 @@ public class FriendshipService {
   @Autowired private UserRepository userRepository;
   @Autowired private FriendshipRepository friendshipRepository;
   @Autowired private FriendshipMapper friendshipMapper;
+  @Autowired private NotificationService notificationService;
 
   // =====================================================================
   // 🛡️ HELPER: The Logic Hibernate Couldn't Handle
@@ -84,7 +85,12 @@ public class FriendshipService {
     friendship.setStatus(FriendshipStatus.PENDING);
     friendship.setMessage(requestDto.getMessage());
 
-    return friendshipMapper.toResponse(friendshipRepository.save(friendship));
+    Friendship saved = friendshipRepository.save(friendship);
+
+    // Bell notification for the receiver ("X sent you a friend request")
+    notificationService.sendFriendRequest(receiver, requester, saved.getId());
+
+    return friendshipMapper.toResponse(saved);
   }
 
   @Transactional
@@ -101,7 +107,12 @@ public class FriendshipService {
     }
 
     request.setStatus(FriendshipStatus.ACCEPTED);
-    return friendshipMapper.toResponse(friendshipRepository.save(request));
+    Friendship saved = friendshipRepository.save(request);
+
+    // Tell the original requester their request was accepted
+    notificationService.sendFriendAccepted(saved.getRequester(), saved.getReceiver(), saved.getId());
+
+    return friendshipMapper.toResponse(saved);
   }
 
   @Transactional
@@ -257,7 +268,11 @@ public class FriendshipService {
         toSave.add(request);
       }
     }
-    return friendshipRepository.saveAll(toSave).stream()
+    List<Friendship> accepted = friendshipRepository.saveAll(toSave);
+    for (Friendship f : accepted) {
+      notificationService.sendFriendAccepted(f.getRequester(), f.getReceiver(), f.getId());
+    }
+    return accepted.stream()
         .map(friendshipMapper::toResponse)
         .collect(Collectors.toList());
   }

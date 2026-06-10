@@ -111,6 +111,120 @@ public class NotificationService {
     saveNotification(recipient, null, "NO_SHOW_MARKED", bookingId, msg);
   }
 
+  // ===========================================================================
+  // FEED (notifications screen + bell badge)
+  // ===========================================================================
+
+  /** Paged feed, newest first, as DTOs (never expose the raw entity/users). */
+  @org.springframework.transaction.annotation.Transactional(readOnly = true)
+  public org.springframework.data.domain.Page<com.parth.sportsapp.sportsbackend.dto.NotificationResponse>
+      getMyNotifications(UUID userId, org.springframework.data.domain.Pageable pageable) {
+    return notificationRepository.findByRecipient_IdOrderByCreatedAtDesc(userId, pageable)
+        .map(this::toResponse);
+  }
+
+  @org.springframework.transaction.annotation.Transactional(readOnly = true)
+  public long getUnreadCount(UUID userId) {
+    return notificationRepository.countByRecipient_IdAndIsReadFalse(userId);
+  }
+
+  @org.springframework.transaction.annotation.Transactional
+  public int markAllAsRead(UUID userId) {
+    return notificationRepository.markAllReadForUser(userId);
+  }
+
+  private com.parth.sportsapp.sportsbackend.dto.NotificationResponse toResponse(Notification n) {
+    com.parth.sportsapp.sportsbackend.dto.NotificationResponse r =
+        new com.parth.sportsapp.sportsbackend.dto.NotificationResponse();
+    r.setId(n.getId());
+    r.setType(n.getType());
+    r.setMessage(n.getMessage());
+    r.setReferenceId(n.getReferenceId());
+    r.setRead(n.isRead());
+    r.setCreatedAt(n.getCreatedAt());
+    if (n.getSender() != null) {
+      r.setSenderId(n.getSender().getId());
+      r.setSenderName(n.getSender().getFirstName() + " " + n.getSender().getLastName());
+      r.setSenderAvatarUrl(n.getSender().getProfilePictureUrl());
+    }
+    return r;
+  }
+
+  // ===========================================================================
+  // FRIENDS
+  // ===========================================================================
+
+  /** Someone sent a friend request. referenceId = friendship id. */
+  public void sendFriendRequest(User receiver, User requester, UUID friendshipId) {
+    String msg = requester.getFirstName() + " " + requester.getLastName() +
+        " sent you a friend request.";
+    saveNotification(receiver, requester, "FRIEND_REQUEST", friendshipId, msg);
+  }
+
+  /** A request you sent was accepted. Notifies the original requester. */
+  public void sendFriendAccepted(User requester, User accepter, UUID friendshipId) {
+    String msg = accepter.getFirstName() + " " + accepter.getLastName() +
+        " accepted your friend request. You're now friends!";
+    saveNotification(requester, accepter, "FRIEND_ACCEPTED", friendshipId, msg);
+  }
+
+  // ===========================================================================
+  // BOOKINGS
+  // ===========================================================================
+
+  /**
+   * New booking landed (instant-book) or was requested (request-to-book).
+   * Notifies the venue owner either way — they always want to know.
+   */
+  public void sendBookingCreated(User owner, User player, com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    String when = formatBookingTime(booking);
+    String court = booking.getCourt().getCourtNumber();
+    String msg = booking.getStatus() == com.parth.sportsapp.sportsbackend.model.BookingStatus.PENDING
+        ? player.getFirstName() + " " + player.getLastName() + " requested " + court + " on " + when + ". Tap to confirm or decline."
+        : player.getFirstName() + " " + player.getLastName() + " booked " + court + " on " + when + ".";
+    String type = booking.getStatus() == com.parth.sportsapp.sportsbackend.model.BookingStatus.PENDING
+        ? "BOOKING_REQUESTED" : "BOOKING_CREATED";
+    saveNotification(owner, player, type, booking.getId(), msg);
+  }
+
+  /** Owner approved a pending request. Notifies the player. */
+  public void sendBookingConfirmed(User player, com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    String msg = "Booking confirmed! " + booking.getCourt().getVenue().getName() +
+        " — " + booking.getCourt().getCourtNumber() + ", " + formatBookingTime(booking) + ".";
+    saveNotification(player, null, "BOOKING_CONFIRMED", booking.getId(), msg);
+  }
+
+  /** Owner declined a pending request. Notifies the player. */
+  public void sendBookingDeclined(User player, com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    String reason = booking.getCancellationReason();
+    String msg = "Your booking request at " + booking.getCourt().getVenue().getName() +
+        " for " + formatBookingTime(booking) + " was declined" +
+        (reason != null ? ": " + reason : ".");
+    saveNotification(player, null, "BOOKING_DECLINED", booking.getId(), msg);
+  }
+
+  /** Player cancelled. Notifies the venue owner. */
+  public void sendBookingCancelledByPlayer(User owner, User player, com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    String msg = player.getFirstName() + " " + player.getLastName() + " cancelled their booking of " +
+        booking.getCourt().getCourtNumber() + " on " + formatBookingTime(booking) + ".";
+    saveNotification(owner, player, "BOOKING_CANCELLED", booking.getId(), msg);
+  }
+
+  /** Venue cancelled. Notifies the player. */
+  public void sendBookingCancelledByVenue(User player, com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    String reason = booking.getCancellationReason();
+    String msg = booking.getCourt().getVenue().getName() + " cancelled your booking for " +
+        formatBookingTime(booking) + (reason != null ? ": " + reason : ". Sorry about that!");
+    saveNotification(player, null, "BOOKING_CANCELLED", booking.getId(), msg);
+  }
+
+  private String formatBookingTime(com.parth.sportsapp.sportsbackend.model.Booking booking) {
+    java.time.format.DateTimeFormatter day = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM");
+    java.time.format.DateTimeFormatter time = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+    return booking.getStartTime().format(day) + ", " +
+        booking.getStartTime().format(time) + "–" + booking.getEndTime().format(time);
+  }
+
   private void saveNotification(User recipient, User sender, String type, UUID referenceId, String message) {
     Notification notification = new Notification();
     notification.setRecipient(recipient);

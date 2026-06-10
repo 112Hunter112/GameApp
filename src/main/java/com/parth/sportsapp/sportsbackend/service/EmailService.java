@@ -51,6 +51,33 @@ public class EmailService {
   }
 
   /**
+   * Password reset: emails a 6-digit code. The code itself is generated and
+   * hashed by PasswordResetService; this method only delivers it.
+   */
+  @Async
+  public void sendPasswordResetCode(String to, String firstName, String code) {
+    try {
+      MimeMessage message = mailSender.createMimeMessage();
+      MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+      helper.setTo(to);
+      helper.setSubject("Your Sportsman password reset code");
+
+      String safeName = StringEscapeUtils.escapeHtml4(firstName == null ? "there" : firstName);
+      String safeCode = StringEscapeUtils.escapeHtml4(code);
+      String html = "<h3>Hi " + safeName + ",</h3>"
+          + "<p>Use this code to reset your Sportsman password:</p>"
+          + "<p style=\"font-size:28px;font-weight:bold;letter-spacing:6px\">" + safeCode + "</p>"
+          + "<p>The code expires in 15 minutes. If you didn't ask for this, you can ignore this email — "
+          + "your password stays unchanged.</p>";
+
+      helper.setText(html, true);
+      mailSender.send(message);
+    } catch (MessagingException e) {
+      throw new RuntimeException("Failed to send email", e);
+    }
+  }
+
+  /**
    * Sends an Invite to an external user to join the app
    * Used by MatchService when a user logs a game against a non-user.
    */

@@ -63,6 +63,9 @@ public class VenueService {
 @Autowired
 private UserRepository userRepository;
 
+  @Autowired
+  private com.parth.sportsapp.sportsbackend.repository.CourtRepository courtRepository;
+
   private static final Logger logger = LoggerFactory.getLogger(VenueService.class);
 
   private static final double KM_TO_METERS = 1000.0;
@@ -314,6 +317,63 @@ private UserRepository userRepository;
       venues = venueRepository.findBySportName(sportName);
     }
     return venues.stream().map(venueMapper::toResponse).collect(Collectors.toList());
+  }
+
+  /**
+   * Unified venue discovery for the search tab: free text (name/address),
+   * optional sport filter, optional location for distance sorting.
+   * Two queries total: the page itself, then one batch court fetch to enrich
+   * the results with sports / court count / cheapest rate.
+   */
+  @Transactional(readOnly = true)
+  public Page<com.parth.sportsapp.sportsbackend.dto.VenueSearchResult> discoverVenues(
+      String q, UUID sportId, Double lat, Double lng, Pageable pageable) {
+
+    String safeQ = q == null ? "" : q.trim();
+    // Optional params travel as strings; '' = absent (see repository note).
+    Page<com.parth.sportsapp.sportsbackend.repository.VenueSearchProjection> page =
+        venueRepository.discoverVenues(
+            safeQ,
+            sportId == null ? "" : sportId.toString(),
+            lat == null ? "" : lat.toString(),
+            lng == null ? "" : lng.toString(),
+            pageable);
+
+    // Batch-load active courts for every venue on this page (one query).
+    List<UUID> venueIds = page.getContent().stream()
+        .map(com.parth.sportsapp.sportsbackend.repository.VenueSearchProjection::getId)
+        .collect(Collectors.toList());
+    List<com.parth.sportsapp.sportsbackend.model.Courts> courts = venueIds.isEmpty()
+        ? List.of()
+        : courtRepository.findByVenue_IdIn(venueIds).stream()
+            .filter(com.parth.sportsapp.sportsbackend.model.Courts::isActive)
+            .collect(Collectors.toList());
+
+    return page.map(p -> {
+      com.parth.sportsapp.sportsbackend.dto.VenueSearchResult r =
+          new com.parth.sportsapp.sportsbackend.dto.VenueSearchResult();
+      r.setId(p.getId());
+      r.setName(p.getName());
+      r.setAddress(p.getAddress());
+      r.setDistanceMeters(p.getDistanceMeters());
+
+      List<com.parth.sportsapp.sportsbackend.model.Courts> mine = courts.stream()
+          .filter(c -> c.getVenue().getId().equals(p.getId()))
+          .collect(Collectors.toList());
+      r.setCourtCount(mine.size());
+      r.setSports(mine.stream()
+          .map(c -> c.getSports() != null ? c.getSports().getSportName() : null)
+          .filter(s -> s != null)
+          .distinct()
+          .sorted()
+          .collect(Collectors.toList()));
+      r.setMinHourlyRate(mine.stream()
+          .map(com.parth.sportsapp.sportsbackend.model.Courts::getHourlyRate)
+          .filter(rate -> rate != null)
+          .min(java.math.BigDecimal::compareTo)
+          .orElse(null));
+      return r;
+    });
   }
 
 

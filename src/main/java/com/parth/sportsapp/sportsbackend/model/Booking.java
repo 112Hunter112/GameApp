@@ -33,7 +33,6 @@ public class Booking {
   @Column(name = "end_time", nullable = false)
   private LocalDateTime endTime;
 
-  // Status: PENDING, CONFIRMED, CANCELLED
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private BookingStatus status = BookingStatus.PENDING;
@@ -50,11 +49,18 @@ public class Booking {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "payment_method")
-  private PaymentMethod paymentMethod = PaymentMethod.SPLIT; // CARD, APPLE_PAY
+  private PaymentMethod paymentMethod = PaymentMethod.CASH; // pay-at-venue until Stripe lands
+
+  /** Optional note from the player to the venue ("we need 4 rackets", etc.). */
+  @Column(columnDefinition = "TEXT")
+  private String notes;
 
   @CreationTimestamp
   @Column(name = "created_at", updatable = false)
   private LocalDateTime createdAt;
+
+  @Column(name = "confirmed_at")
+  private LocalDateTime confirmedAt;
 
   @Column(name = "cancelled_at")
   private LocalDateTime cancelledAt;
@@ -62,6 +68,14 @@ public class Booking {
   /** When the venue marked this booking as a no-show (audit trail for disputes). */
   @Column(name = "no_show_marked_at")
   private LocalDateTime noShowMarkedAt;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "cancelled_by")
+  private CancellationActor cancelledBy;
+
+  /** Reason supplied on owner decline / either party's cancel. Shown to the other side. */
+  @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+  private String cancellationReason;
 
   /**
    * Bidirectional One-to-One relationship with Match.
@@ -114,6 +128,18 @@ public class Booking {
 
   public LocalDateTime getNoShowMarkedAt() { return noShowMarkedAt; }
   public void setNoShowMarkedAt(LocalDateTime v) { this.noShowMarkedAt = v; }
+
+  public String getNotes() { return notes; }
+  public void setNotes(String notes) { this.notes = notes; }
+
+  public LocalDateTime getConfirmedAt() { return confirmedAt; }
+  public void setConfirmedAt(LocalDateTime confirmedAt) { this.confirmedAt = confirmedAt; }
+
+  public CancellationActor getCancelledBy() { return cancelledBy; }
+  public void setCancelledBy(CancellationActor cancelledBy) { this.cancelledBy = cancelledBy; }
+
+  public String getCancellationReason() { return cancellationReason; }
+  public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
 
   public Match getMatch() {
     return match;

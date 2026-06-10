@@ -1,11 +1,14 @@
 package com.parth.sportsapp.sportsbackend.controller;
 
+import com.parth.sportsapp.sportsbackend.dto.AuthResponse;
 import com.parth.sportsapp.sportsbackend.dto.ChangePasswordRequest;
 import com.parth.sportsapp.sportsbackend.dto.PublicProfileResponse;
 import com.parth.sportsapp.sportsbackend.dto.UpdateProfileRequest;
 import com.parth.sportsapp.sportsbackend.dto.UserSummaryDto;
 import com.parth.sportsapp.sportsbackend.exception.UnauthorizedException;
+import com.parth.sportsapp.sportsbackend.model.User;
 import com.parth.sportsapp.sportsbackend.service.JwtUtil;
+import com.parth.sportsapp.sportsbackend.service.RefreshTokenService;
 import com.parth.sportsapp.sportsbackend.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
@@ -28,6 +31,37 @@ public class UserController {
 
   @Autowired
   private JwtUtil jwtUtil;
+
+  @Autowired
+  private RefreshTokenService refreshTokenService;
+
+  /**
+   * "Become a host" — upgrade the caller to VENUE_OWNER and hand back fresh
+   * tokens immediately (the role claim lives inside the JWT, so the old access
+   * token wouldn't see the new rights). Idempotent: already-owners just get
+   * fresh tokens. Called by the app at the end of the listing wizard.
+   */
+  @PostMapping("/me/become-owner")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<AuthResponse> becomeVenueOwner(
+      @RequestHeader("Authorization") String token) {
+
+    UUID userId = getUserIdFromToken(token);
+    User user = userService.becomeVenueOwner(userId);
+
+    String role = user.getRole().name();
+    String accessToken = jwtUtil.generateToken(user.getEmail(), user.getId(), role);
+    String refreshToken = refreshTokenService.issue(user.getId());
+
+    return ResponseEntity.ok(new AuthResponse(
+        accessToken,
+        refreshToken,
+        jwtUtil.getAccessTokenExpiryMs() / 1000,
+        user.getEmail(),
+        user.getFirstName(),
+        role
+    ));
+  }
 
   /**
    * Search bar for finding other players
