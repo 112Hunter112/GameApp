@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Lets you run the dependency scan by hand from the Actions tab.
+  workflow_dispatch:
+  # Weekly CVE scan, Mondays 06:00 UTC.
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  build-and-test:
+    name: Build, unit + integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
+      # `verify` runs:
+      #  - Surefire: unit tests (*Test)        — no Docker needed
+      #  - Failsafe: integration tests (*IT)   — Testcontainers spins up
+      #    postgis/postgis:15-3.4; Docker is preinstalled on ubuntu-latest.
+      - name: Build and run all tests
+        run: ./mvnw -B verify
+
+      # Surface test reports in the Actions UI when something fails.
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+          retention-days: 7
+
+  # Manual / weekly CVE scan. Slow (downloads the NVD database), so it is NOT
+  # part of the per-push pipeline. For faster runs add an NVD API key:
+  # repo Settings -> Secrets -> Actions -> NVD_API_KEY, then append
+  #   -Dnvd.api.key=${{ secrets.NVD_API_KEY }}
+  dependency-scan:
+    name: OWASP dependency scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - run: chmod +x mvnw
+      - name: Run OWASP Dependency-Check
+        run: ./mvnw -B org.owasp:dependency-check-maven:check
+      - name: Upload scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: target/dependency-check-report.html
+          retention-days: 30
