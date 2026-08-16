@@ -288,6 +288,59 @@ side effects off-thread.
 
 ---
 
+## Observability & error logging (do before public launch)
+
+Today there is **no request correlation** anywhere (no MDC/trace id), and no
+structured logging. The `GlobalExceptionHandler` is a good foundation — it
+already funnels everything to one place and logs unexpected 5xx with a stack
+trace (`GlobalExceptionHandler.java:120`) and DB conflicts as WARN — but when a
+user reports "I got an error," you currently cannot map that report to their
+request's logs. Do **not** fix this by logging at every step (noise, cost, and
+a PII-leak risk given P1-5); add these instead:
+
+1. **Correlation id (highest value).** A `OncePerRequestFilter` that
+   reads/generates `X-Request-Id`, puts it in the SLF4J **MDC** (so every log
+   line for the request carries it automatically), returns it as a response
+   header, and includes it in the error JSON body (extend `baseBody`). Then a
+   user's "error `a1b2c3`" maps to their whole request in one CloudWatch query.
+2. **Context on the 5xx log line.** Add path, method, and authenticated user id
+   to the catch-all `log.error` so one line is self-sufficient.
+3. **Structured (JSON) logging under a `prod` Spring profile** via a
+   `logback-spring.xml` (JSON in prod, plain console in dev) — needs the
+   `logstash-logback-encoder` dependency — so CloudWatch Logs Insights can query
+   by field (`status`, `requestId`, `path`, `userId`) instead of scraping text.
+4. **Level discipline:** unexpected 5xx = ERROR with stack + context; handled 4xx
+   domain exceptions = do not log; DB conflicts = WARN (already the case).
+5. **Never log** request bodies, emails, tokens, or passwords (see P1-5).
+
+## Operational launch-readiness (infra/process, not app code)
+
+Cross-cutting items required before public use, independent of the match/feed bugs:
+
+- **Rotate the credentials in `TEST_CREDENTIALS.md` and remove the file.** It sits
+  in a public repo with real-looking account passwords, and it is in git history —
+  rotation matters more than deletion. (**P0-severity for a public repo.**)
+- **Database backups.** One droplet + one Postgres volume + no dumps = one disk
+  failure from total data loss. Add a nightly `pg_dump` to off-box storage (S3/B2)
+  and practice one restore.
+- **Schema migrations.** `ddl-auto: update` (`application.yml:24`) mutates prod
+  schema on boot with no review — dangerous once multiple people (and the planned
+  KeshavAditya fork merge) change entities. Adopt **Flyway** before that merge.
+- **Auth rate limiting.** No brute-force protection on `login`/`register`/
+  forgot-password, nor on match creation/invites (see P1-4). Add Caddy
+  `rate_limit` or bucket4j.
+- **Monitoring.** No uptime check, error alerting, or log rotation today. Add an
+  uptime pinger + Sentry (or equivalent) + logrotate so a 3am crash isn't silent.
+- **Email deliverability.** SMTP via a duckdns host will land invites/reset codes
+  in spam. Move to SES/Resend on a real domain with SPF/DKIM/DMARC.
+- **Legal / privacy.** You store DOB, gender, photos, and emails — a privacy
+  policy, ToS, and an **account-deletion + data-export** path are legally required
+  in most jurisdictions (ties to the GDPR item under product decisions).
+- **Beta smoke test in the pipeline.** Add an automated end-to-end smoke run
+  (register → login → search → book → cancel) against the beta environment in
+  `deploy.yml`, gating the production approval — the one piece the staged pipeline
+  is missing.
+
 ## Suggested fix order
 
 1. `@Transactional` on the five match methods + a **DB-backed IT** (P0-1).
