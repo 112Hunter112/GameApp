@@ -1,8 +1,9 @@
 name: CI
 
+# PR gate only: pushes to main are tested by the Deploy workflow's own gate
+# (deploy.yml runs `mvn verify` before it will build an image), so running CI
+# there too would just double the bill.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
   # Lets you run the dependency scan by hand from the Actions tab.

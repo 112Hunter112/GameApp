@@ -1,0 +1,12 @@
+# CI/CD override: run the app from a registry image instead of building on the
+# server. The Deploy workflow (.github/workflows/deploy.yml) sets APP_IMAGE to
+# an immutable GHCR digest and brings the stack up with:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#                  -f docker-compose.deploy.yml up -d --no-build app
+#
+# Building on the droplet (the old `--build` flow) still works when you need
+# it — just leave this file out of the -f list.
+services:
+  app:
+    image: ${APP_IMAGE:?set APP_IMAGE to the GHCR image to deploy}
