@@ -3,7 +3,13 @@ package com.parth.sportsapp.sportsbackend.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "participants")
+@Table(name = "participants", indexes = {
+    // The composite PK (match_id, user_id) cannot serve user_id-only lookups,
+    // and every MatchRepository "my matches / my stats" query filters on
+    // user_id — without this, each one scans the whole table
+    // (measured 130x slower for a typical user at 600k rows; see perf/RESULTS.md).
+    @Index(name = "idx_participants_user", columnList = "user_id, match_id")
+})
 public class Participants {
 
   @EmbeddedId

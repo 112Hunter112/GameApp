@@ -11,6 +11,12 @@ import java.util.UUID;
     uniqueConstraints = {
         @UniqueConstraint(columnNames = {"requester_id", "receiver_id"}) // makes both these
         // variables me unique
+    },
+    indexes = {
+        // The unique constraint above indexes the requester side only.
+        // Receiver-side queries (pending requests, the request badge) need
+        // their own path (measured 34x faster at 445k rows; see perf/RESULTS.md).
+        @Index(name = "idx_friendship_receiver_status", columnList = "receiver_id, status")
     }
 )
 public class Friendship {

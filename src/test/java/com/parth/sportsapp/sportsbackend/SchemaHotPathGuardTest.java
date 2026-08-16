@@ -74,6 +74,22 @@ class SchemaHotPathGuardTest {
   }
 
   @Test
+  void participantsUserLookupsAreIndexed() {
+    // Every MatchRepository per-user query joins participants on user_id; the
+    // composite PK (match_id, user_id) cannot serve that predicate.
+    assertThat(indexColumnSets(com.parth.sportsapp.sportsbackend.model.Participants.class))
+        .contains("user_id,match_id");
+  }
+
+  @Test
+  void friendshipReceiverSideIsIndexed() {
+    // Pending-request list and badge count both probe by receiver + status;
+    // the unique (requester_id, receiver_id) constraint covers neither.
+    assertThat(indexColumnSets(Friendship.class))
+        .contains("receiver_id,status");
+  }
+
+  @Test
   void refreshTokenHashLookupIsUniqueAndIndexed() {
     // Every authenticated refresh resolves a token by its hash; uniqueness is
     // also what makes rotation-reuse detection trustworthy.
