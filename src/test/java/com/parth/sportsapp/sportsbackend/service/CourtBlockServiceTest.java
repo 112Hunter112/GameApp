@@ -67,7 +67,7 @@ class CourtBlockServiceTest {
 
   @Test
   void createBlockSavesAndMapsResponse() {
-    when(courtRepository.findById(court.getId())).thenReturn(Optional.of(court));
+    when(courtRepository.findByIdForUpdate(court.getId())).thenReturn(Optional.of(court));
     when(courtBlockRepository.countOverlapping(court.getId(), start, start.plusHours(2)))
         .thenReturn(0L);
     when(courtBlockRepository.save(any(CourtBlock.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -86,7 +86,7 @@ class CourtBlockServiceTest {
 
   @Test
   void createBlockStoresNullForBlankReason() {
-    when(courtRepository.findById(court.getId())).thenReturn(Optional.of(court));
+    when(courtRepository.findByIdForUpdate(court.getId())).thenReturn(Optional.of(court));
     when(courtBlockRepository.countOverlapping(any(), any(), any())).thenReturn(0L);
     when(courtBlockRepository.save(any(CourtBlock.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -99,7 +99,7 @@ class CourtBlockServiceTest {
   @Test
   void createBlockRejectsUnknownCourt() {
     UUID courtId = UUID.randomUUID();
-    when(courtRepository.findById(courtId)).thenReturn(Optional.empty());
+    when(courtRepository.findByIdForUpdate(courtId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() ->
         service.createBlock(courtId, owner.getId(), request(start, start.plusHours(1), null)))
@@ -108,7 +108,7 @@ class CourtBlockServiceTest {
 
   @Test
   void createBlockRejectsNonOwner() {
-    when(courtRepository.findById(court.getId())).thenReturn(Optional.of(court));
+    when(courtRepository.findByIdForUpdate(court.getId())).thenReturn(Optional.of(court));
 
     assertThatThrownBy(() ->
         service.createBlock(court.getId(), UUID.randomUUID(), request(start, start.plusHours(1), null)))
@@ -119,7 +119,7 @@ class CourtBlockServiceTest {
 
   @Test
   void createBlockRejectsMissingOrInvertedTimes() {
-    when(courtRepository.findById(court.getId())).thenReturn(Optional.of(court));
+    when(courtRepository.findByIdForUpdate(court.getId())).thenReturn(Optional.of(court));
 
     // Missing end
     assertThatThrownBy(() ->
@@ -139,7 +139,7 @@ class CourtBlockServiceTest {
 
   @Test
   void createBlockCapsWindowAtThirtyOneDays() {
-    when(courtRepository.findById(court.getId())).thenReturn(Optional.of(court));
+    when(courtRepository.findByIdForUpdate(court.getId())).thenReturn(Optional.of(court));
 
     assertThatThrownBy(() ->
         service.createBlock(court.getId(), owner.getId(),
@@ -157,7 +157,7 @@ class CourtBlockServiceTest {
 
   @Test
   void createBlockRejectsOverlapWithExistingBlock() {
-    when(courtRepository.findById(court.getId())).thenReturn(Optional.of(court));
+    when(courtRepository.findByIdForUpdate(court.getId())).thenReturn(Optional.of(court));
     when(courtBlockRepository.countOverlapping(court.getId(), start, start.plusHours(1)))
         .thenReturn(1L);
 

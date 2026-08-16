@@ -5,7 +5,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "notifications", indexes = {
+    // The bell badge (unread count) is polled by every client; the feed pages
+    // by recipient newest-first. Both must be index hits, not table scans —
+    // this table only ever grows.
+    @Index(name = "idx_notification_recipient_unread", columnList = "recipient_id, is_read"),
+    @Index(name = "idx_notification_recipient_created", columnList = "recipient_id, created_at")
+})
 public class Notification {
 
   @Id

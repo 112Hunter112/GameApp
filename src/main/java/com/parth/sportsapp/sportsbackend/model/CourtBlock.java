@@ -12,7 +12,11 @@ import java.util.UUID;
  * exactly like a confirmed booking would.
  */
 @Entity
-@Table(name = "court_blocks")
+@Table(name = "court_blocks", indexes = {
+    // countOverlapping runs inside the booking transaction while the court row
+    // is locked — a scan here directly stretches lock hold time on busy courts.
+    @Index(name = "idx_court_block_court_time", columnList = "court_id, start_time, end_time")
+})
 public class CourtBlock {
 
   @Id
