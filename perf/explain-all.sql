@@ -274,3 +274,28 @@ WHERE c.venue_id = :'hot_venue'
   AND b.start_time BETWEEN now() AND now() + interval '7 days'
 ORDER BY b.start_time ASC
 LIMIT 50;
+
+\echo '=== Q38 FeedShareRepository feed page (viewer with 50 friends incl. hot sharer) ==='
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM feed_shares
+WHERE user_id IN (SELECT id FROM bench_user_ids WHERE idx BETWEEN 1 AND 51)
+ORDER BY created_at DESC
+LIMIT 20;
+
+\echo '=== Q39 FeedShareRepository feed page (typical viewer, 15 friends, no heavy sharers) ==='
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM feed_shares
+WHERE user_id IN (SELECT id FROM bench_user_ids WHERE idx BETWEEN 30000 AND 30014)
+ORDER BY created_at DESC
+LIMIT 20;
+
+\echo '=== Q40 FeedShare target cleanup lookup (match deleted) ==='
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM feed_shares
+WHERE target_type = 'MATCH' AND target_id = (SELECT suuid('match', 12345));
+
+\echo '=== Q41 FeedShare duplicate guard (exists probe) ==='
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT 1 FROM feed_shares
+WHERE user_id = :'hot_user' AND target_type = 'MATCH'
+  AND target_id = (SELECT suuid('match', 777)) LIMIT 1;

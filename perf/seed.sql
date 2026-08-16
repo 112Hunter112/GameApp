@@ -110,27 +110,44 @@ WHERE suuid('user', (n * 13) % 40000) IS NOT NULL  -- keep the planner honest
 ON CONFLICT (requester_id, receiver_id) DO NOTHING;
 -- self-friendships are harmless noise for perf purposes
 
--- --- matches + participants: 300k matches, 2 players each ----------------------
+-- --- matches + participants: HEAVY history ------------------------------------
+-- 4M matches / ~8M participations over 40k users: the median player carries a
+-- few hundred participations; skewed heads carry thousands to ~20k+. This is
+-- the "a person could store hundreds or thousands of matches" regime.
+-- Creators are drawn uniformly (everyone logs matches); opponents are drawn
+-- with a power-law (popular players get challenged constantly).
 INSERT INTO matches (id, created_by_user_id, source, verification_status, score,
                      match_date, is_private, status, ratings_applied, created_at)
 SELECT suuid('match', n),
-       suuid('user', floor(40000 * pow(random(), 3))::int),
+       suuid('user', floor(40000 * random())::int),
        CASE WHEN n % 4 = 0 THEN 'MANUAL' ELSE 'APP_BOOKING' END,
        CASE WHEN random() < 0.8 THEN 'CONFIRMED' ELSE 'PENDING' END,
        CASE WHEN random() < 0.9 THEN '6-4, 6-3' END,
        now() - ((random() * 360 - 30) * interval '1 day'),
        false, 'OPEN', random() < 0.7, now() - (random() * interval '360 days')
-FROM generate_series(0, 299999) n;
+FROM generate_series(0, 3999999) n;
 
 -- creator is participant 1; opponent skewed; dedupe the rare self-match
 INSERT INTO participants (match_id, user_id, status, is_host, team_name)
 SELECT m.id, m.created_by_user_id, 'ACCEPTED', true, 'TEAM_A' FROM matches m;
 
 INSERT INTO participants (match_id, user_id, status, is_host, team_name)
-SELECT suuid('match', n), suuid('user', floor(40000 * pow(random(), 3))::int),
+SELECT suuid('match', n), suuid('user', floor(40000 * pow(random(), 2))::int),
        'ACCEPTED', false, 'TEAM_B'
-FROM generate_series(0, 299999) n
+FROM generate_series(0, 3999999) n
 ON CONFLICT (match_id, user_id) DO NOTHING;
+
+-- --- feed shares: 2M, sharer skew, ~3% pointing at deleted targets -------------
+INSERT INTO feed_shares (id, user_id, target_type, target_id, caption, created_at)
+SELECT suuid('share', n),
+       suuid('user', floor(40000 * pow(random(), 2))::int),
+       'MATCH',
+       CASE WHEN random() < 0.03 THEN gen_random_uuid()          -- dangling: target deleted
+            ELSE suuid('match', floor(random() * 4000000)::int) END,
+       CASE WHEN n % 5 = 0 THEN 'what a game #' || n END,
+       now() - (random() * interval '120 days')
+FROM generate_series(0, 1999999) n
+ON CONFLICT (user_id, target_type, target_id) DO NOTHING;
 
 -- --- refresh tokens / reset codes / offers -------------------------------------
 INSERT INTO refresh_tokens (id, user_id, token_hash, expiry_date, revoked, created_at)
@@ -168,7 +185,18 @@ SELECT 'bookings' t, count(*) FROM bookings UNION ALL
 SELECT 'notifications', count(*) FROM notifications UNION ALL
 SELECT 'friendships', count(*) FROM friendships UNION ALL
 SELECT 'matches', count(*) FROM matches UNION ALL
-SELECT 'participants', count(*) FROM participants;
+SELECT 'participants', count(*) FROM participants UNION ALL
+SELECT 'feed_shares', count(*) FROM feed_shares;
+
+-- Heavy-history check: how many matches does a person actually carry?
+SELECT 'participations p50' AS metric, percentile_cont(0.5) WITHIN GROUP (ORDER BY c)::int
+FROM (SELECT count(*) c FROM participants GROUP BY user_id) s
+UNION ALL
+SELECT 'participations p99', percentile_cont(0.99) WITHIN GROUP (ORDER BY c)::int
+FROM (SELECT count(*) c FROM participants GROUP BY user_id) s
+UNION ALL
+SELECT 'participations max', max(c)::int
+FROM (SELECT count(*) c FROM participants GROUP BY user_id) s;
 
 SELECT 'hot court share %' AS metric,
        round(100.0 * count(*) FILTER (WHERE court_id = suuid('court', 0)) / count(*), 1)

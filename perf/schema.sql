@@ -13,7 +13,8 @@
 
 DROP TABLE IF EXISTS smart_fill_offers, user_preferences, participants, matches,
   password_reset_codes, refresh_tokens, notifications, friendships, court_blocks,
-  booking_policies, bookings, courts, sports, venues, users CASCADE;
+  booking_policies, bookings, courts, sports, venues, users, feed_shares,
+  bench_court_ids, bench_user_ids CASCADE;
 
 CREATE TABLE users (
   id uuid PRIMARY KEY,
@@ -221,6 +222,18 @@ CREATE TABLE smart_fill_offers (
 );
 CREATE INDEX idx_offer_court_sent ON smart_fill_offers (court_id, sent_at);
 CREATE INDEX idx_offer_user ON smart_fill_offers (user_id);
+
+CREATE TABLE feed_shares (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL,
+  target_type varchar(255) NOT NULL,
+  target_id uuid NOT NULL,
+  caption varchar(280),
+  created_at timestamp,
+  UNIQUE (user_id, target_type, target_id)
+);
+CREATE INDEX idx_feed_share_user_created ON feed_shares (user_id, created_at);
+CREATE INDEX idx_feed_share_target ON feed_shares (target_type, target_id);
 
 -- Integer handles for pgbench scripts (pgbench randomizes ints, not uuids).
 CREATE TABLE bench_court_ids (idx int PRIMARY KEY, id uuid NOT NULL);
