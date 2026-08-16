@@ -90,6 +90,19 @@ class SchemaHotPathGuardTest {
   }
 
   @Test
+  void feedShareLookupsAreIndexedAndDeduped() {
+    // The feed reads shares by author newest-first; target cleanup probes by
+    // (target_type, target_id); one share per user per target is a DB rule.
+    Set<String> indexes =
+        indexColumnSets(com.parth.sportsapp.sportsbackend.model.FeedShare.class);
+    assertThat(indexes).contains("user_id,created_at");
+    assertThat(indexes).contains("target_type,target_id");
+    assertThat(uniqueConstraintColumnSets(
+        com.parth.sportsapp.sportsbackend.model.FeedShare.class))
+        .contains("user_id,target_type,target_id");
+  }
+
+  @Test
   void refreshTokenHashLookupIsUniqueAndIndexed() {
     // Every authenticated refresh resolves a token by its hash; uniqueness is
     // also what makes rotation-reuse detection trustworthy.

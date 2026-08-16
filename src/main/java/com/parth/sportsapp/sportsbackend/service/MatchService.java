@@ -41,6 +41,7 @@ public class MatchService {
   @Autowired NotificationService notificationService;
   @Autowired MatchValidator matchValidator;
   @Autowired SportsRepository sportsRepository;
+  @Autowired FeedShareService feedShareService;
   @PersistenceContext EntityManager entityManager;
 
 
@@ -363,6 +364,11 @@ public class MatchService {
     }
 
     participantsRepository.deleteAll(match.getParticipants());
+    // Feed shares referencing this match would hydrate as "unavailable"
+    // forever — remove them with the match (viewers' cached feed pages age
+    // out via the feed cache TTL).
+    feedShareService.onTargetDeleted(
+        com.parth.sportsapp.sportsbackend.model.FeedTargetType.MATCH, match.getId());
     matchRepository.delete(match);
   }
 
