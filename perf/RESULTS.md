@@ -1,5 +1,11 @@
 # DB Stress-Test Results — 2026-08-16
 
+> Scope: this document covers **performance only** (queries, indexes,
+> contention, sharding/partitioning/PK). For the full findings handoff —
+> security, correctness, QA, missing features, error-logging, and operational
+> launch-readiness — see [`FINAL.md`](../FINAL.md) in the repo root.
+
+
 Environment: PostgreSQL 16.13, single node, defaults except
 `shared_buffers=512MB, work_mem=32MB`. Data seeded by `seed.sql` with
 production-shaped skew:
