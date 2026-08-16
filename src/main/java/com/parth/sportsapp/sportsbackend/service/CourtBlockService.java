@@ -31,7 +31,10 @@ public class CourtBlockService {
   @Autowired private CourtRepository courtRepository;
 
   public CourtBlockResponse createBlock(UUID courtId, UUID ownerId, CourtBlockRequest request) {
-    Courts court = courtRepository.findById(courtId)
+    // Same serialization point as BookingService.createBooking: hold the court
+    // row lock across the overlap check, or a block and a booking (or two
+    // blocks) can both pass their checks concurrently and land on one window.
+    Courts court = courtRepository.findByIdForUpdate(courtId)
         .orElseThrow(() -> new NotFoundException("Court not found"));
     if (!court.getVenue().getOwner().getId().equals(ownerId)) {
       throw new ForbiddenException("You do not own this court");

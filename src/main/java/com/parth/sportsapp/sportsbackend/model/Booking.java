@@ -9,7 +9,10 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "bookings", indexes = {
-    @Index(name = "id_booking_court_time", columnList = "court_id, start_time, end_time")
+    @Index(name = "id_booking_court_time", columnList = "court_id, start_time, end_time"),
+    // Player views (upcoming/past) and reliability counts all filter by user
+    // and sort by time — without this every "my bookings" page is a full scan.
+    @Index(name = "idx_booking_user_time", columnList = "user_id, start_time")
 })
 public class Booking {
 

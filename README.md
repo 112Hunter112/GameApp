@@ -1,169 +1,144 @@
-# SportsApp Backend Service
+# DuoSport Backend (GameApp)
 
-## Overview
+A Spring Boot backend that fuses **court booking**, **social matchmaking**,
+**competitive match tracking (per-sport Elo + reliability scores)**, and a
+**venue-owner operations suite** — one codebase, two experiences separated by
+role.
 
-The SportsApp Backend is a robust, scalable RESTful API designed to facilitate sports venue booking and management. Built on the Spring Boot framework and backed by PostgreSQL, this service handles user authentication, venue data management, and booking transactions. The architecture is currently evolving to include high-performance microservices using Go and Redis to ensure scalability under heavy load.
+- **Players** discover nearby venues (PostGIS geo-search), book courts by the
+  hour, log and verify match results against friends, build Elo ratings,
+  showcase awards, and receive Smart Fill offers when a slot opens near them.
+- **Venue owners** upgrade in-app to host mode: approve or decline booking
+  requests, set per-venue booking policies, block courts for maintenance or
+  leagues, and run an analytics dashboard (revenue, occupancy heatmap,
+  player reliability, no-show tracking, CSV export).
 
-## Technology Stack
+Deep-dive documentation lives in [`PROJECT_DESCRIPTION.md`](PROJECT_DESCRIPTION.md);
+this README covers what the system is and how to build, test, and ship it.
 
-### Core Frameworks
+## Technology stack
 
-- **Language:** Java 17+ (Core API), Go (High-Performance Edge Services)
-- **Framework:** Spring Boot 3.x
-- **Build Tool:** Maven
+| Layer | Technology |
+|---|---|
+| Language / framework | Java 17, Spring Boot 3.4 (Web, Data JPA, Security, Validation, Mail, Actuator) |
+| Database | PostgreSQL 15 + PostGIS (geospatial venue search), Hibernate 6 + hibernate-spatial |
+| Cache / infra deps | Redis (spring-data-redis + Redisson starter on the classpath; not yet load-bearing in app logic) |
+| Auth | Stateless JWT access tokens + rotating hashed refresh tokens, Google Sign-In verification, HaveIBeenPwned k-anonymity breach screening |
+| API docs | springdoc-openapi (Swagger UI at `/swagger-ui.html` when running) |
+| Tests | JUnit 5, Mockito, AssertJ, spring-security-test, Testcontainers (PostGIS) |
+| Packaging / runtime | Docker multi-stage build (non-root), Docker Compose, Caddy TLS ingress |
+| CI/CD | GitHub Actions — PR test gate + staged beta → prod delivery (GHCR images) |
 
-### Data & Security
+## Architecture
 
-- **Database:** PostgreSQL
-- **Caching & State:** Redis (Planned for Rate Limiting & Session Caching)
-- **Security:** Spring Security, BCrypt, JWT (JSON Web Tokens)
-- **ORM:** Hibernate / Spring Data JPA
+Layered monolith: `Controller → Service → Repository`, DTOs at every boundary
+(entities never reach the wire), role checks via Spring Security plus
+per-resource ownership checks in services (IDOR guards).
 
-### Infrastructure & Performance
+Two data-layer decisions worth knowing before touching booking code:
 
-- **Containerization:** Docker & Docker Compose
-- **Traffic Control:** Custom Distributed Rate Limiter (Go implementation)
-- **API Testing:** Postman
-- **Documentation:** Swagger UI
+- **Double-booking prevention** is a pessimistic lock on the court row
+  (`CourtRepository#findByIdForUpdate`) held across the overlap checks for
+  bookings *and* court blocks. Overlap semantics are half-open:
+  `s1 < e2 AND e1 > s2` — back-to-back bookings share a boundary legally.
+- **The schema is Hibernate-managed** (`ddl-auto: update`): the
+  `@Index`/`@UniqueConstraint` annotations on entities *are* the production
+  indexes. `SchemaHotPathGuardTest` fails the build if a hot-path index
+  annotation disappears.
 
-## System Architecture
+## Running locally
 
-The application adheres to a strict Controller-Service-Repository layered architecture, with an upcoming Rate Limiting Layer to protect API resources.
-
-```
-graph LR
-    A[Mobile Client] -->|HTTP/REST| G[Go Rate Limiter]
-    G -->|Allowed Request| B[Spring Boot API]
-    B -->|JSON Response| A
-    B -->|JPA/Hibernate| C[PostgreSQL Database]
-    G -.->|Token Bucket Check| R[Redis Cache]
-```
-
-## Authentication Flow
-
-The security module is managed by the AuthService, implementing the following lifecycle:
-
-1. **Validation:** Verifies uniqueness of credentials (Email/Phone).
-2. **Encryption:** Hashes sensitive data using BCryptPasswordEncoder.
-3. **Persistence:** Transactional storage of User entities.
-4. **Token Generation:** Issuance of secure JWTs via JwtUtil.
-5. **Response:** Returns authorized session tokens to the client.
-
-## Configuration & Environment Variables
-
-### Secrets Management
-
-For security compliance, sensitive configuration files are excluded from version control. A local configuration file must be created before the application can start.
-
-1. Navigate to the resources directory: `src/main/resources/`
-2. Create a file named: `application-secrets.properties`
-3. Populate the file with the following keys (obtain values from the repository administrator):
-
-```properties
-# Email Configuration (SMTP)
-spring.mail.username=admin@example.com
-spring.mail.password=secure-app-password
-
-# JWT Configuration (Min 32 characters)
-jwt.secret=YOUR_SECURE_256_BIT_SECRET_KEY
-
-# Redis Configuration (Upcoming)
-spring.data.redis.host=localhost
-spring.data.redis.port=6379
-```
-
-## Installation & Deployment
-
-### Method 1: Containerized Deployment (Docker)
-
-This is the recommended method for development to ensure environment consistency across Java, Go, and database services.
-
-**Prerequisites:** Docker Desktop installed and running.
-
-**Build and Start:**
+### Docker Compose (recommended)
 
 ```bash
-docker-compose up --build
+docker compose up --build          # app + PostGIS + Redis (+ Jenkins, legacy)
 ```
 
-This command compiles the code, builds the JAR/Go binaries, and starts Application, Redis, and Database containers.
+App: `http://localhost:8080` — Swagger UI: `http://localhost:8080/swagger-ui.html`
 
-#### Docker Command Reference:
+### Maven (native debugging)
 
-| Command | Description |
-|---------|-------------|
-| `docker-compose up` | Starts existing containers. Use for quick startup. |
-| `docker-compose up --build` | Recompiles source code and rebuilds containers. |
-| `docker-compose down` | Stops and removes containers. |
-| `docker-compose down -v` | Stops containers and deletes the database volume (Resets Data). |
+Requires local PostgreSQL (with PostGIS) and Redis. Configuration comes from
+environment variables (defaults in parentheses):
 
-### Method 2: Local Deployment (Maven)
-
-Suitable for native debugging without Docker.
-
-**Prerequisites:** Java 17+, PostgreSQL, and Redis installed locally.
-
-**Configure Database:**
-
-Update `src/main/resources/application.properties` with your local credentials.
-
-**Execute Run Command:**
+| Variable | Purpose |
+|---|---|
+| `DB_HOST` / `DB_PORT` / `DB_NAME` (`localhost`/`5432`/`sportsapp`) | Postgres connection |
+| `DB_USER` / `DB_PASSWORD` (`postgres`/`password`) | Postgres credentials |
+| `REDIS_HOST` / `REDIS_PORT` (`localhost`/`6379`) | Redis |
+| `JWT_SECRET` (**required**, ≥32 bytes Base64) | JWT signing key |
+| `EMAIL_USERNAME` / `EMAIL_PASSWORD` (**required**) | SMTP for reset codes & verification |
+| `APP_CORS_ALLOWED_ORIGINS` (localhost dev origins) | CORS allowlist — never `*` |
+| `GOOGLE_OAUTH_CLIENT_IDS` (empty = disabled) | Google Sign-In audiences |
+| `PWNED_CHECK_ENABLED` (`true`) | HaveIBeenPwned breach screening |
 
 ```bash
-# Windows
-.\mvnw spring-boot:run
-
-# Mac/Linux
-./mvnw spring-boot:run
+bash mvnw spring-boot:run
 ```
 
-## API Reference
+## Testing
 
-### Authentication Module
+The suite is split by speed; Surefire and Failsafe run different classes:
 
-**Base Path:** `/auth`
+```bash
+bash mvnw test      # *Test  — unit tests, no Docker, ~150 tests, seconds
+bash mvnw verify    # + *IT  — Testcontainers integration tests (needs Docker)
+```
 
-| HTTP Method | Endpoint | Description |
-|-------------|----------|-------------|
-| POST | `/register` | Register a new Player account. |
-| POST | `/login` | Authenticate user and retrieve JWT. |
-| POST | `/register/vendor` | Register a new Venue Owner account. |
+What the integration tests cover, beyond the usual: booking **concurrency**
+(N threads racing for one slot must produce exactly one booking —
+`BookingConflictIT`), overlap boundary semantics, bulk-update scoping
+(`markAllReadForUser`, `invalidateAllForUser`), auth flow end-to-end through
+the MVC stack, and PostGIS distance queries.
 
-### Venue Management
+A repo-local Claude Code subagent (`.claude/agents/db-test-engineer.md`)
+encodes the DB-testing conventions — locking rules, IT boilerplate, seeding
+recipes — for AI-assisted test work.
 
-**Base Path:** `/api/venues`
+### Performance / stress harness
 
-| HTTP Method | Endpoint | Description |
-|-------------|----------|-------------|
-| GET | `/` | Retrieve a paginated list of all venues. |
-| POST | `/` | Create a new venue record (Vendor Role required). |
+`perf/` contains a reusable stress harness for the data layer: a faithful
+schema, skewed seed data (hot courts / hot users), `EXPLAIN ANALYZE` sweeps of
+every repository query, pgbench contention simulations (hot-court booking
+races, badge-polling storms), and a primary-key strategy study. See
+[`perf/RESULTS.md`](perf/RESULTS.md) for the latest findings and
+`perf/run.sh` to reproduce them against any Postgres.
 
-## Development Roadmap
+## CI/CD
 
-### Phase 1: Core Backend Foundation
+Two GitHub Actions workflows:
 
-- [x] Implementation of Spring Boot & PostgreSQL connectivity.
-- [x] User Entity modeling and Repository layer creation.
-- [x] Security configuration and JWT utility implementation.
-- [x] Development of Authentication Service logic.
+- **`ci.yml`** — pull-request gate: full `mvn verify` (unit + Testcontainers
+  integration tests) on every PR, plus a manual/weekly OWASP dependency scan.
+- **`deploy.yml`** — delivery on push to `main`:
+  `verify` gate → build one Docker image → push to GHCR (`sha-…` + `:beta`) →
+  auto-deploy to **beta** with an on-box `/actuator/health` gate →
+  **production** behind a required-reviewer approval, which promotes the
+  *same image digest* beta ran (never a rebuild), floats `:prod`/`:latest`,
+  and rolls back automatically if the health check fails.
 
-### Phase 2: Venue Management System
+Deployment target is a Docker Compose stack behind Caddy (TLS) with UFW as
+the network enforcement layer; `docker-compose.deploy.yml` switches the app
+service from build-on-server to the pinned registry image.
 
-- [ ] Venue Entity modeling.
-- [ ] Implementation of Venue CRUD operations.
-- [ ] Booking transaction logic.
+## Repository map
 
-### Phase 3: Performance & Scalability (Immediate Priority)
+| Path | What's there |
+|---|---|
+| `src/main/java/...` | controllers, services, repositories, entities, security, validation |
+| `src/test/java/...` | unit tests (`*Test`) and Testcontainers ITs (`*IT`) |
+| `perf/` | DB stress-test harness + results |
+| `.github/workflows/` | CI and staged deploy pipelines |
+| `PROJECT_DESCRIPTION.md` | full feature-by-feature product/technical description |
+| `ApiFlow.md`, `MODEL_OVERVIEW.md`, `Booking.md` | API flows, data model, booking design notes |
+| `Project_Explained_Backend.md`, `NotesAndThoughts.md` | architecture explainers / working notes |
+| `SECURITY_CHANGES_REPORT.pdf`, `owasp-suppressions.xml` | security review artifacts |
+| `Dockerfile`, `docker-compose*.yml`, `Caddyfile` | build and deployment stack |
 
-- [ ] Integration of Redis for caching session data and token blocklisting.
-- [ ] Development of a Go (Golang) microservice for high-throughput request handling.
-- [ ] Implementation of a distributed Rate Limiter middleware to prevent API abuse.
+## Project status
 
-### Phase 4: Client Integration
-
-- [ ] React Native environment initialization.
-- [ ] Axios service layer configuration for API integration.
-
-## License
-
-Copyright © 2025 SportsApp Inc. All Rights Reserved.
+Actively developed two-person project. The booking engine, auth stack,
+social/match features, and vendor dashboard are implemented and tested; the
+legacy Jenkins flow is superseded by the GitHub Actions pipelines and slated
+for removal. A large fork merge (KeshavAditya/GameApp) is planned — the test
+suite and schema guards on this branch exist partly to make that rebase safe.

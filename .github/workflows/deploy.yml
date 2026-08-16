@@ -1,0 +1,212 @@
+name: Deploy
+
+# Delivery pipeline: main -> test -> build image -> beta -> (approval) -> prod.
+#
+# Design rules:
+#   - Tests gate everything. No green `mvn verify`, no image.
+#   - Build ONCE, promote by digest. Beta and prod run the byte-identical
+#     image; prod is never a rebuild that could differ from what beta proved.
+#   - Prod sits behind a GitHub Environment named "production" with a required
+#     reviewer — promoting is a one-click approval in the Actions UI.
+#   - Each deploy health-checks the app on the box and fails loudly if the
+#     container doesn't come up; the previous image stays on disk for rollback.
+#
+# One-time setup (repo Settings):
+#   Environments:
+#     beta        -> no protection rules (auto-deploys on merge to main)
+#     production  -> add "Required reviewers" (you and/or Keshav)
+#   Secrets (Settings -> Secrets and variables -> Actions):
+#     BETA_SSH_HOST / PROD_SSH_HOST   droplet IP or DNS per environment
+#     DEPLOY_SSH_USER                 SSH user (e.g. deploy)
+#     DEPLOY_SSH_KEY                  private key for that user
+#     GHCR_PULL_USER / GHCR_PULL_TOKEN  PAT with read:packages, used by the
+#                                     droplet to pull from GHCR. (Or make the
+#                                     package public and delete the login step.)
+#   On each droplet: the compose checkout lives in /opt/sportsapp with a .env
+#   holding DB_PASSWORD, JWT_SECRET, EMAIL_*, etc. (same as today).
+#
+# Only one server for now? Point BETA_SSH_HOST and PROD_SSH_HOST at the same
+# droplet: beta then acts as "deploy + smoke check", and the production
+# approval is your pause button before you consider the release done. Split
+# the hosts whenever a real beta box exists — the pipeline doesn't change.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two deploys on top of each other; don't cancel one mid-flight.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/gameapp
+  COMPOSE_FILES: -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.deploy.yml
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Gate: full build + unit tests + Testcontainers ITs (Docker is preinstalled
+  # on ubuntu-latest). This is the same `verify` the PR CI runs — repeated here
+  # so a deploy can never ship an untested merge state.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Build & test (gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - run: chmod +x mvnw
+      - name: mvn verify (unit + integration tests)
+        run: ./mvnw -B verify
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-gate-test-reports
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Build the image once, push to GHCR, and export the immutable digest that
+  # every later stage deploys.
+  # ---------------------------------------------------------------------------
+  build-image:
+    name: Build & push image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: test
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          # sha tag for traceability; "beta" moves with every main build.
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+            ${{ env.IMAGE }}:beta
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # BETA: auto-deploy every merge to main, then health-check on the box.
+  # ---------------------------------------------------------------------------
+  deploy-beta:
+    name: Deploy beta
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build-image
+    environment:
+      name: beta
+      url: https://beta.sportsmanapi.duckdns.org
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          APP_IMAGE: ghcr.io/${{ github.repository_owner }}/gameapp@${{ needs.build-image.outputs.digest }}
+          GHCR_USER: ${{ secrets.GHCR_PULL_USER }}
+          GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        with:
+          host: ${{ secrets.BETA_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: APP_IMAGE,GHCR_USER,GHCR_TOKEN
+          script: |
+            set -euo pipefail
+            cd /opt/sportsapp
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            export APP_IMAGE
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.deploy.yml pull app
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d --no-build app
+            # Health gate: UFW blocks 8080 externally, so probe from the box.
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost:8080/actuator/health | grep -q '"UP"'; then
+                echo "beta healthy"; exit 0
+              fi
+              sleep 5
+            done
+            echo "beta failed health check"; docker compose logs --tail 100 app; exit 1
+
+  # ---------------------------------------------------------------------------
+  # PROD: waits for a human approval (environment protection rule), then
+  # promotes the EXACT digest beta just proved. Also floats the :prod and
+  # :latest tags to that digest for humans browsing the registry.
+  # ---------------------------------------------------------------------------
+  deploy-prod:
+    name: Deploy production (needs approval)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build-image, deploy-beta]
+    environment:
+      name: production
+      url: https://sportsmanapi.duckdns.org
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Float :prod and :latest tags to the approved digest
+        run: |
+          docker buildx imagetools create \
+            --tag ${{ env.IMAGE }}:prod \
+            --tag ${{ env.IMAGE }}:latest \
+            ${{ env.IMAGE }}@${{ needs.build-image.outputs.digest }}
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          APP_IMAGE: ghcr.io/${{ github.repository_owner }}/gameapp@${{ needs.build-image.outputs.digest }}
+          GHCR_USER: ${{ secrets.GHCR_PULL_USER }}
+          GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: APP_IMAGE,GHCR_USER,GHCR_TOKEN
+          script: |
+            set -euo pipefail
+            cd /opt/sportsapp
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            # Remember what is currently running so rollback is one command.
+            docker inspect --format '{{ index .Config.Image }}' sports-app 2>/dev/null \
+              > .last-deployed-image || true
+            export APP_IMAGE
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.deploy.yml pull app
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d --no-build app
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost:8080/actuator/health | grep -q '"UP"'; then
+                echo "prod healthy"; exit 0
+              fi
+              sleep 5
+            done
+            echo "prod failed health check — rolling back"
+            if [ -s .last-deployed-image ]; then
+              export APP_IMAGE="$(cat .last-deployed-image)"
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d --no-build app
+            fi
+            docker compose logs --tail 100 app
+            exit 1

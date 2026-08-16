@@ -9,7 +9,13 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "matches")
+@Table(name = "matches", indexes = {
+    // The whole per-user match family (history, upcoming, today, this-week,
+    // streak, head-to-head) orders by match_date. At heavy history (a player
+    // with ~20k matches) this cuts findHistory from ~120ms to ~38ms; see
+    // perf/RESULTS.md. Pair with the participants(user_id) index.
+    @Index(name = "idx_matches_date", columnList = "match_date")
+})
 public class Match {
 
   @Id

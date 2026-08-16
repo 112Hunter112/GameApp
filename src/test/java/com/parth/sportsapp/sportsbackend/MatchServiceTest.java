@@ -47,6 +47,7 @@ public class MatchServiceTest {
   // MatchService injects an EntityManager via @PersistenceContext; Mockito does
   // not process that annotation, so we provide an explicit mock for @InjectMocks.
   @Mock private jakarta.persistence.EntityManager entityManager;
+  @Mock private com.parth.sportsapp.sportsbackend.service.FeedShareService feedShareService;
 
 @Test
   public void testLogManualMatch_Success() {

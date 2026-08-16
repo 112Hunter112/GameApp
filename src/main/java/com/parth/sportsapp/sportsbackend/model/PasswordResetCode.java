@@ -12,7 +12,10 @@ import java.util.UUID;
  * Codes expire after 15 minutes and allow at most 5 wrong attempts.
  */
 @Entity
-@Table(name = "password_reset_codes")
+@Table(name = "password_reset_codes", indexes = {
+    // Rate-limit count and newest-unused lookup both probe by user + recency.
+    @Index(name = "idx_reset_code_user_created", columnList = "user_id, created_at")
+})
 public class PasswordResetCode {
 
   public static final int EXPIRY_MINUTES = 15;
