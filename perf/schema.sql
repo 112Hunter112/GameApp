@@ -191,6 +191,9 @@ CREATE TABLE matches (
   external_verification_token varchar(255)
 );
 
+-- As declared on the Match entity (the whole per-user date-ordered family):
+CREATE INDEX idx_matches_date ON matches (match_date);
+
 CREATE TABLE participants (
   match_id uuid NOT NULL REFERENCES matches(id),
   user_id uuid NOT NULL REFERENCES users(id),

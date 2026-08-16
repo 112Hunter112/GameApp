@@ -74,6 +74,14 @@ class SchemaHotPathGuardTest {
   }
 
   @Test
+  void matchDateOrderingIsIndexed() {
+    // Every per-user match query orders by match_date; without this the heavy
+    // history tail (20k-match players) sorts the whole set each page.
+    assertThat(indexColumnSets(com.parth.sportsapp.sportsbackend.model.Match.class))
+        .contains("match_date");
+  }
+
+  @Test
   void participantsUserLookupsAreIndexed() {
     // Every MatchRepository per-user query joins participants on user_id; the
     // composite PK (match_id, user_id) cannot serve that predicate.
